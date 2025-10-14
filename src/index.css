@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* === Base (thème léger + styles globaux) === */
+@layer base {
+  :root{
+    --bg: 248 250 252;      /* slate-50 */
+    --ink: 15 23 42;        /* slate-900 */
+    --ringc: 226 232 240;   /* slate-200 */
+  }
+
+  html, body, #root { height: 100%; }
+
+  body { 
+    @apply text-gray-900;
+    background-color: rgb(var(--bg));
+    color: rgb(var(--ink));
+  }
+
+  a { @apply text-blue-600 hover:underline; }
+}
+
+/* === Composants (réutilisables) === */
+@layer components {
+  /* Carte standard pour les listes de matchs */
+  .card { @apply bg-white rounded-xl ring-1 ring-slate-200 shadow-[0_2px_10px_rgba(2,6,23,0.05)]; }
+
+  /* Couleurs des notes */
+  .rating-low  { @apply font-bold text-red-600; }    /* < 5   */
+  .rating-mid  { @apply font-bold text-blue-600; }   /* 5–7.49 */
+  .rating-high { @apply font-bold text-green-600; }  /* >= 7.5 */
+
+  /* Étoile Homme du match (or) */
+  .motm-star{
+    @apply inline-block ml-1 align-middle leading-none drop-shadow-sm;
+    font-size: 1.05rem;
+    color: #D4AF37; /* Or */
+  }
+
+  /* Confort pour l'input note */
+  .inp-rating{
+    @apply text-center border border-gray-300 rounded-md px-2 py-1;
+  }
+  .inp-rating:focus{
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(37,99,235,.15); /* bleu discret */
+    border-color: #93c5fd; /* blue-300 */
+  }
+}
+
+/* === Utilitaires (mobile & UX) === */
+@layer utilities {
+  /* Scroll horizontal “propre” (pills des Journées) */
+  .no-scrollbar::-webkit-scrollbar{ display:none }
+  .no-scrollbar{ -ms-overflow-style:none; scrollbar-width:none }
+
+  /* Fondu latéral pour carrousel (évite les coupes nettes) */
+  .fade-x{
+    mask-image: linear-gradient(to right,
+      transparent 0,
+      black 12px,
+      black calc(100% - 12px),
+      transparent);
+  }
+}
