@@ -10,7 +10,6 @@ import ClubDetail from "./pages/ClubDetail.jsx";
 import AssistsLeaders from "./pages/AssistsLeaders.jsx";
 import { ClubSheetHost } from "./components/ClubSheet";
 import { StaffSheetHost } from "./components/StaffSheet";
-import { PlayerSheetProvider } from "./components/PlayerSheet"; // ✅ enveloppe globale
 
 const Nav = () => (
   <nav className="px-4 py-3 border-b bg-white sticky top-0 z-10 flex gap-4">
@@ -34,35 +33,33 @@ const Nav = () => (
 
 export default function App() {
   return (
-    <PlayerSheetProvider>
-      <BrowserRouter>
-        <Nav />
-        <main className="p-6 max-w-6xl mx-auto">
-          <Routes>
-            {/* Accueil -> /journees */}
-            <Route path="/" element={<Navigate to="/journees" replace />} />
+    <BrowserRouter>
+      <Nav />
+      <main className="p-6 max-w-6xl mx-auto">
+        <Routes>
+          {/* Accueil -> /journees */}
+          <Route path="/" element={<Navigate to="/journees" replace />} />
 
-            {/* Pages */}
-            <Route path="/journees" element={<Home />} />
-            <Route path="/standings" element={<Standings />} />
-            <Route path="/top-scorers" element={<TopScorers />} />
-            <Route path="/assists" element={<AssistsLeaders />} />
-            <Route path="/clubs" element={<Clubs />} />
-            <Route path="/clubs/:id" element={<ClubDetail />} />
-            <Route path="/match/:id" element={<MatchDetail />} />
+          {/* Pages */}
+          <Route path="/journees" element={<Home />} />
+          <Route path="/standings" element={<Standings />} />
+          <Route path="/top-scorers" element={<TopScorers />} />
+          <Route path="/assists" element={<AssistsLeaders />} />
+          <Route path="/clubs" element={<Clubs />} />
+          <Route path="/clubs/:id" element={<ClubDetail />} />
+          <Route path="/match/:id" element={<MatchDetail />} />
 
-            {/* Admin */}
-            <Route path="/admin/match/:id/events" element={<MatchEventsEditor />} />
+          {/* Admin */}
+          <Route path="/admin/match/:id/events" element={<MatchEventsEditor />} />
 
-            {/* 404 */}
-            <Route path="*" element={<Navigate to="/journees" replace />} />
-          </Routes>
-        </main>
+          {/* 404 */}
+          <Route path="*" element={<Navigate to="/journees" replace />} />
+        </Routes>
+      </main>
 
-        {/* Hôtes globaux */}
-        <ClubSheetHost />
-        <StaffSheetHost />
-      </BrowserRouter>
-    </PlayerSheetProvider>
+      {/* Hôtes globaux */}
+      <ClubSheetHost />
+      <StaffSheetHost />
+    </BrowserRouter>
   );
 }
