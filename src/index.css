@@ -82,4 +82,13 @@
   word-break: keep-all;
   hyphens: auto;            /* nécessite lang="fr" au HTML pour de beaux traits d’union */
 }
+/* Nom de club sur 1 ligne, sans césure, avec ellipsis */
+.one-line{
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: keep-all;
+  hyphens: none;
+}
+
 }
