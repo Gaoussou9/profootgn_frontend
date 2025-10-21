@@ -220,12 +220,13 @@ function MatchCard({ m }) {
       <div className="grid grid-cols-[1fr,auto,4.5rem,auto,1fr] sm:grid-cols-[1fr,auto,5rem,auto,1fr] items-center gap-2 min-h-[68px]">
         {/* Home */}
         <div className="min-w-0 text-right pr-1">
-          <span
-            className="block text-[15px] sm:text-base font-medium text-gray-900 no-underline one-line group-hover:underline decoration-gray-300"
-            title={homeName}
-          >
-            {homeName}
-          </span>
+         <span
+  className="block team-name font-medium text-gray-900 no-underline group-hover:underline decoration-gray-300"
+  title={homeName}
+>
+  {homeName}
+</span>
+
         </div>
 
         <div className="justify-self-end">
@@ -252,11 +253,12 @@ function MatchCard({ m }) {
         {/* Away */}
         <div className="min-w-0 text-left pl-1">
           <span
-            className="block text-[15px] sm:text-base font-medium text-gray-900 no-underline one-line group-hover:underline decoration-gray-300"
-            title={awayName}
-          >
-            {awayName}
-          </span>
+  className="block team-name font-medium text-gray-900 no-underline group-hover:underline decoration-gray-300"
+  title={awayName}
+>
+  {awayName}
+</span>
+
         </div>
       </div>
 
