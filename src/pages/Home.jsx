@@ -281,7 +281,7 @@ function MatchCard({ m }) {
 
         <div className="min-w-0 text-left pl-1">
           <span
-            className="block text-[15px] sm:text-base font-medium clamp-2 break-anywhere"
+            className="block text-[10px] sm:text-base font-medium clamp-2 break-anywhere"
             title={awayName}
           >
             {awayName}
@@ -289,7 +289,7 @@ function MatchCard({ m }) {
         </div>
       </div>
 
-      <div className="text-[12px] text-gray-500 mt-2">
+      <div className="text-[10px] text-gray-500 mt-2">
         {fmtDate(m.datetime)}
         {m.venue ? ` • ${m.venue}` : ""}
       </div>
@@ -497,7 +497,7 @@ export default function Home() {
   if (error) return <p className="px-3 text-red-600">Erreur : {error}</p>;
 
   return (
-    <div className="mx-auto max-w-[480px] px-3 pb-24"> {/* 🔒 Cadre mobile */}
+    <div className="mx-auto max-w-[280px] px-3 pb-24"> {/* 🔒 Cadre mobile */}
       <section className="space-y-4">
         <header className="flex items-baseline justify-between">
           <h1 className="text-2xl font-bold">Ligue 1 Salam</h1>
