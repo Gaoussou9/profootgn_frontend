@@ -54,6 +54,7 @@
   /* Scroll horizontal “propre” (pills des Journées) */
   .no-scrollbar::-webkit-scrollbar{ display:none }
   .no-scrollbar{ -ms-overflow-style:none; scrollbar-width:none }
+   html{-webkit-text-size-adjust:100%}
 
   /* Fondu latéral pour carrousel (évite les coupes nettes) */
   .fade-x{

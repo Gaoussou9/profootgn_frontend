@@ -5,11 +5,11 @@ import api from "../api/client";
 
 /* ---------- Helpers UI ---------- */
 
-const Logo = ({ src, alt, size = "w-8 h-8" }) => (
+const Logo = ({ src, alt, size = "w-9 h-9 sm:w-10 sm:h-10" }) => (
   <img
     src={src || "/club-placeholder.png"}
     alt={alt}
-    className={`${size} object-contain shrink-0`}
+    className={`${size} object-contain shrink-0 rounded-md ring-1 ring-black/10 bg-white`}
     onError={(e) => (e.currentTarget.src = "/club-placeholder.png")}
   />
 );
@@ -22,6 +22,7 @@ const statusClasses = (s) => {
     case "PAUSED":
       return "bg-amber-100 text-amber-800 ring-amber-200";
     case "SCHEDULED":
+    case "NOT_STARTED":
       return "bg-blue-100 text-blue-700 ring-blue-200";
     case "SUSPENDED":
       return "bg-violet-100 text-violet-800 ring-violet-200";
@@ -41,58 +42,51 @@ const statusClasses = (s) => {
 const statusLabel = (s) => {
   switch ((s || "").toUpperCase()) {
     case "SCHEDULED": return "Prévu";
-    case "LIVE":      return "LIVE";
-    case "HT":        return "Mi-temps";
-    case "PAUSED":    return "Pause";
+    case "NOT_STARTED": return "À venir";
+    case "LIVE": return "LIVE";
+    case "HT": return "Mi-temps";
+    case "PAUSED": return "Pause";
     case "SUSPENDED": return "Suspendu";
     case "POSTPONED": return "Reporté";
     case "CANCELED":
     case "CANCELLED": return "Annulé";
     case "FT":
-    case "FINISHED":  return "Terminé";
-    default:          return s || "-";
+    case "FINISHED": return "Terminé";
+    default: return s || "-";
   }
 };
 
 const fmtDate = (iso) => (iso ? new Date(iso).toLocaleString() : "");
 
-/* ---------- Chrono LIVE persistant (fix “45’+ au coup d’envoi”) ---------- */
-/**
- * localStorage (par match):
- *  - gn:live:<id>:anchorMs -> timestamp ms (now - minute*60k)
- *  - gn:live:<id>:half2    -> "1" si 2e mi-temps
- *  - gn:live:<id>:lastStat -> dernier statut (LIVE/HT/…)
- *
- * Règles:
- *  - 2e MT est posée UNIQUEMENT:
- *      · à la reprise (HT/PAUSED -> LIVE), ou
- *      · si on arrive en cours avec minute API STRICTEMENT > 45.
- *  - À l’inverse, si minute API < 45 ou démarrage depuis SCHEDULED/NOT_STARTED,
- *      on retire le flag 2e MT.
- *  - Resync vers l’AVANT si l’API a >2’ d’avance. Jamais en arrière.
- *  - FT purge tout.
- */
+/* ---------- Chrono LIVE persistant ---------- */
 function useLiveClock(matchId, status, apiMinute) {
   const u = (status || "").toUpperCase();
-  const isLive  = u === "LIVE";
+  const isLive = u === "LIVE";
   const isBreak = u === "HT" || u === "PAUSED";
   const isEnded = u === "FT" || u === "FINISHED";
 
   const apiMin = Number.isFinite(Number(apiMinute)) ? Math.max(0, Number(apiMinute)) : 0;
 
-  const base  = `gn:live:${matchId}`;
-  const K_A   = `${base}:anchorMs`;
-  const K_H2  = `${base}:half2`;
+  const base = `gn:live:${matchId}`;
+  const K_A = `${base}:anchorMs`;
+  const K_H2 = `${base}:half2`;
   const K_LST = `${base}:lastStat`;
 
   const [minute, setMinute] = useState(null);
   const [isSecondHalf, setIsSecondHalf] = useState(false);
   const timerRef = useRef(null);
 
-  const readNum = (k, d=null)=>{ try{const n=Number(localStorage.getItem(k)); return Number.isFinite(n)?n:d;}catch{return d;} };
-  const readStr = (k)=>{ try{return localStorage.getItem(k);}catch{return null;} };
-  const write   = (k,v)=>{ try{localStorage.setItem(k,String(v));}catch{} };
-  const del     = (k)=>{ try{localStorage.removeItem(k);}catch{} };
+  const readNum = (k, d = null) => {
+    try {
+      const n = Number(localStorage.getItem(k));
+      return Number.isFinite(n) ? n : d;
+    } catch {
+      return d;
+    }
+  };
+  const readStr = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
+  const write = (k, v) => { try { localStorage.setItem(k, String(v)); } catch {} };
+  const del = (k) => { try { localStorage.removeItem(k); } catch {} };
 
   const setAnchorFromMinute = (m) => {
     const mm = Math.max(0, Number(m) || 0);
@@ -130,44 +124,34 @@ function useLiveClock(matchId, status, apiMinute) {
     const resumedFromBreak = last === "HT" || last === "PAUSED";
     const kickoffFromSched = !last || last === "SCHEDULED" || last === "NOT_STARTED";
 
-    // Déduire/forcer l’état 2e MT
     if (resumedFromBreak || apiMin > 45) {
       write(K_H2, "1");
     } else if (kickoffFromSched || apiMin < 45) {
-      // Démarrage de 1re MT ou minute claire <45 -> retirer H2
       del(K_H2);
     }
     const h2 = readStr(K_H2) === "1";
     setIsSecondHalf(h2);
 
-    // (Ré)ancrage
     let anchor = readNum(K_A, null);
     if (anchor == null || resumedFromBreak || kickoffFromSched) {
       let target;
       if (resumedFromBreak) {
-        // Reprise officielle : au moins 45, et éviter de repartir à 90 pile
         target = apiMin >= 90 ? 46 : Math.max(45, apiMin);
       } else {
-        // Coup d’envoi / refresh en 1re MT
         target = apiMin >= 90 ? 46 : apiMin;
       }
       setAnchorFromMinute(target);
       anchor = readNum(K_A, null);
     }
 
-    // Tick 1s
     if (timerRef.current) clearInterval(timerRef.current);
     const tick = () => {
       const a = readNum(K_A, null);
       if (a == null) return;
       let m = Math.max(0, Math.floor((Date.now() - a) / 60000));
-      if (h2 && m < 45) m = 45;           // sécurité 2e MT
+      if (h2 && m < 45) m = 45;
       setMinute(m);
-
-      // resync avant-only si l’API est > 2’ devant
-      if (apiMin - m > 2) {
-        setAnchorFromMinute(apiMin);
-      }
+      if (apiMin - m > 2) setAnchorFromMinute(apiMin);
     };
     tick();
     timerRef.current = setInterval(tick, 1000);
@@ -178,12 +162,6 @@ function useLiveClock(matchId, status, apiMinute) {
   return { minute, isSecondHalf };
 }
 
-/** Badge minute
- * - HT / PAUSED -> "HT"
- * - LIVE:
- *   · 1re MT : 0'…44' puis 45’+
- *   · 2e MT  : 45'…89' puis 90’+
- */
 function formatMinuteForBadge(status, minute, isSecondHalf) {
   const u = (status || "").toUpperCase();
   if (u === "HT" || u === "PAUSED") return "HT";
@@ -194,43 +172,48 @@ function formatMinuteForBadge(status, minute, isSecondHalf) {
   return n >= 45 ? "45’+" : `${n}'`;
 }
 
-/* ---------- Barre de Journées ---------- */
+/* ---------- Barre de Journées (scrollable) ---------- */
 function MatchdayBar({ selected, onChange, max = 26 }) {
   const items = Array.from({ length: max }, (_, i) => i + 1);
   return (
-    <div className="flex items-center gap-2 overflow-x-auto pb-2">
-      <button
-        onClick={() => onChange(null)}
-        className={`px-3 py-1.5 rounded-full text-sm ring-1 ${
-          selected == null ? "bg-black text-white ring-black" : "bg-white text-gray-700 ring-gray-200 hover:bg-gray-50"
-        }`}
-      >
-        Tout
-      </button>
-      {items.map((n) => (
+    <div className="-mx-3 px-3 overflow-x-auto no-scrollbar">
+      <div className="flex items-center gap-2 pb-2 w-max">
         <button
-          key={n}
-          onClick={() => onChange(n)}
-          className={`px-3 py-1.5 rounded-full text-sm ring-1 ${
-            selected === n ? "bg-black text-white ring-black" : "bg-white text-gray-700 ring-gray-200 hover:bg-gray-50"
+          onClick={() => onChange(null)}
+          className={`shrink-0 px-3 py-1.5 rounded-full text-sm ring-1 ${
+            selected == null
+              ? "bg-black text-white ring-black"
+              : "bg-white text-gray-700 ring-gray-200 hover:bg-gray-50"
           }`}
         >
-          J{n}
+          Tout
         </button>
-      ))}
+        {items.map((n) => (
+          <button
+            key={n}
+            onClick={() => onChange(n)}
+            className={`shrink-0 px-3 py-1.5 rounded-full text-sm ring-1 ${
+              selected === n
+                ? "bg-black text-white ring-black"
+                : "bg-white text-gray-700 ring-gray-200 hover:bg-gray-50"
+            }`}
+          >
+            J{n}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
 
-/* ---------- Carte Match ---------- */
+/* ---------- Carte Match (grille stable & textos tronqués) ---------- */
 function MatchCard({ m }) {
   const status = (m.status || "").toUpperCase();
   const isScheduled = status === "SCHEDULED" || status === "NOT_STARTED";
   const isLive = status === "LIVE";
-
   const isSuspended = status === "SUSPENDED";
   const isPostponed = status === "POSTPONED";
-  const isCanceled  = status === "CANCELED" || status === "CANCELLED";
+  const isCanceled = status === "CANCELED" || status === "CANCELLED";
 
   const homeName = m.home_club_name || m.home || m.home_name || m.homeTeam || "Équipe 1";
   const awayName = m.away_club_name || m.away || m.away_name || m.awayTeam || "Équipe 2";
@@ -245,47 +228,62 @@ function MatchCard({ m }) {
       to={`/match/${m.id}`}
       className="relative block bg-white rounded-2xl shadow-sm ring-1 ring-gray-100 p-4 hover:shadow-md transition"
     >
-      <div className={`absolute right-3 top-3 text-xs px-2 py-1 rounded-full ring-1 ${statusClasses(status)}`}>
+      {/* Badge statut en haut-droite */}
+      <div className={`absolute right-3 top-3 text-[11px] px-2 py-1 rounded-full ring-1 ${statusClasses(status)}`}>
         {isLive && <span className="mr-1 inline-block w-2 h-2 bg-red-500 rounded-full animate-pulse align-middle" />}
         {statusLabel(status)}
         {minuteLabel ? ` • ${minuteLabel}` : ""}
       </div>
 
+      {/* Badge journée (facultatif) */}
       {m.round_name ? (
-        <div className="absolute left-3 top-3 text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 ring-1 ring-gray-200">
+        <div className="absolute left-3 top-3 text-[11px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 ring-1 ring-gray-200">
           {m.round_name}
         </div>
       ) : null}
 
-      <div className="grid grid-cols-[1fr,2rem,6rem,2rem,1fr] items-center gap-2 min-h-[68px]">
+      {/* Grille 1fr / auto / score / auto / 1fr (stable mobile) */}
+      <div className="grid grid-cols-[1fr,auto,4.75rem,auto,1fr] items-center gap-2 min-h-[72px]">
         <div className="min-w-0 text-right pr-1">
-          <span className="font-medium truncate">{homeName}</span>
+          <span className="block text-[15px] sm:text-base font-medium truncate" title={homeName}>
+            {homeName}
+          </span>
         </div>
+
         <div className="justify-self-end">
           <Logo src={homeLogo} alt={homeName} />
         </div>
-        <div className="w-[6rem] text-center">
+
+        <div className="w-[4.75rem] text-center">
           {isScheduled ? (
             <span className="text-gray-500 font-semibold">vs</span>
           ) : isPostponed ? (
             <span className="text-gray-400 font-semibold">—</span>
           ) : (
-            <span className={`text-xl font-extrabold leading-none tabular-nums ${isSuspended || isCanceled ? "line-through text-gray-400" : ""}`}>
+            <span
+              className={`text-xl sm:text-2xl font-extrabold leading-none tabular-nums ${
+                isSuspended || isCanceled ? "line-through text-gray-400" : ""
+              }`}
+            >
               {m.home_score}
               <span className="text-gray-400"> - </span>
               {m.away_score}
             </span>
           )}
         </div>
+
         <div className="justify-self-start">
           <Logo src={awayLogo} alt={awayName} />
         </div>
+
         <div className="min-w-0 text-left pl-1">
-          <span className="font-medium truncate">{awayName}</span>
+          <span className="block text-[15px] sm:text-base font-medium truncate" title={awayName}>
+            {awayName}
+          </span>
         </div>
       </div>
 
-      <div className="text-xs text-gray-500 mt-2">
+      <div className="text-[12px] text-gray-500 mt-2">
         {fmtDate(m.datetime)}
         {m.venue ? ` • ${m.venue}` : ""}
       </div>
@@ -293,10 +291,9 @@ function MatchCard({ m }) {
   );
 }
 
-/* ---------- Utils “home default intelligent” ---------- */
+/* ---------- Utils ---------- */
 const ROUND_KEY = "gn:home:round";
 
-/** Retourne le numéro de journée d’un match (si dispo) */
 function matchRoundNum(m) {
   if (m?.round_number != null) return Number(m.round_number);
   if (typeof m?.round === "number") return m.round;
@@ -304,28 +301,18 @@ function matchRoundNum(m) {
   return tryName ? Number(tryName) : null;
 }
 
-/** Choix par défaut:
- *  1) s’il y a du LIVE → round le plus fréquent parmi les LIVE
- *  2) sinon match à venir le plus proche (>= now)
- *  3) sinon dernier match terminé le plus récent
- *  4) sinon null (→ “Tout”)
- */
 function pickDefaultRound({ live = [], upcoming = [], recent = [] }) {
-  // 1) LIVE → round le plus fréquent
   if (Array.isArray(live) && live.length) {
     const counts = new Map();
     for (const m of live) {
       const r = matchRoundNum(m);
       if (r != null) counts.set(r, (counts.get(r) || 0) + 1);
     }
-    if (counts.size) {
-      return [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0];
-    }
+    if (counts.size) return [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0];
     const one = live.find((m) => matchRoundNum(m) != null);
     if (one) return matchRoundNum(one);
   }
 
-  // 2) Prochain SCHEDULED/NOT_STARTED le plus proche
   const now = Date.now();
   const ups = (upcoming || [])
     .map((m) => ({ m, t: Date.parse(m.datetime) || Infinity }))
@@ -335,7 +322,6 @@ function pickDefaultRound({ live = [], upcoming = [], recent = [] }) {
   const future = ups.find((x) => x.t >= now) || ups[0];
   if (future && matchRoundNum(future.m) != null) return matchRoundNum(future.m);
 
-  // 3) Dernier FT/FINISHED le plus récent
   const rec = (recent || [])
     .map((m) => ({ m, t: Date.parse(m.datetime) || 0 }))
     .filter((x) => Number.isFinite(x.t))
@@ -343,12 +329,10 @@ function pickDefaultRound({ live = [], upcoming = [], recent = [] }) {
 
   if (rec && matchRoundNum(rec.m) != null) return matchRoundNum(rec.m);
 
-  // 4) rien trouvé → “Tout”
   return null;
 }
 
 /* ---------- Page d’accueil ---------- */
-
 export default function Home() {
   // Filtre journée (null = tout)
   const [round, setRound] = useState(null);
@@ -362,20 +346,16 @@ export default function Home() {
   const [loading, setLoad] = useState(true);
   const [error, setError] = useState(null);
 
-  // Empêche l'auto-sélection d’écraser le choix utilisateur
   const defaultRoundSet = useRef(false);
 
-  // 0) Lire préférence utilisateur mémorisée
   useEffect(() => {
     const saved = localStorage.getItem(ROUND_KEY);
     if (saved !== null) {
-      // "null" (string) signifie “Tout”
       setRound(saved === "null" ? null : Number(saved));
-      defaultRoundSet.current = true; // ne pas écraser ensuite
+      defaultRoundSet.current = true;
     }
   }, []);
 
-  // 1) Chargement initial
   useEffect(() => {
     let stop = false;
     (async () => {
@@ -394,7 +374,7 @@ export default function Home() {
           api.get("matches/?status=CANCELED&ordering=-datetime&page_size=200").catch(() => ({ data: [] })),
         ]);
 
-        const getArr = (res) => Array.isArray(res?.data) ? res.data : res?.data?.results || [];
+        const getArr = (res) => (Array.isArray(res?.data) ? res.data : res?.data?.results) || [];
 
         if (!stop) {
           setLive(getArr(rLive));
@@ -414,7 +394,6 @@ export default function Home() {
     return () => { stop = true; };
   }, []);
 
-  // 2) Refresh périodique (LIVE)
   useEffect(() => {
     const id = setInterval(async () => {
       try {
@@ -426,7 +405,6 @@ export default function Home() {
     return () => clearInterval(id);
   }, []);
 
-  // 3) Refresh périodique (autres listes)
   useEffect(() => {
     const id = setInterval(async () => {
       try {
@@ -441,7 +419,7 @@ export default function Home() {
           api.get("matches/?status=POSTPONED&ordering=-datetime&page_size=200").catch(() => ({ data: [] })),
           api.get("matches/?status=CANCELED&ordering=-datetime&page_size=200").catch(() => ({ data: [] })),
         ]);
-        const getArr = (res) => Array.isArray(res?.data) ? res.data : res?.data?.results || [];
+        const getArr = (res) => (Array.isArray(res?.data) ? res.data : res?.data?.results) || [];
         setUpcoming(getArr(rUpcoming));
         setRecent(getArr(rRecent));
         setSuspended(getArr(rSusp));
@@ -452,26 +430,22 @@ export default function Home() {
     return () => clearInterval(id);
   }, []);
 
-  // 4) Auto-sélection intelligente (si aucun choix utilisateur mémorisé)
   useEffect(() => {
-    if (defaultRoundSet.current) return; // ne pas écraser
+    if (defaultRoundSet.current) return;
     const def = pickDefaultRound({ live, upcoming, recent });
     if (def !== null && def !== undefined) {
       setRound(def);
       defaultRoundSet.current = true;
       localStorage.setItem(ROUND_KEY, String(def));
     }
-    // si def est null → on reste sur “Tout” sans mémoriser
   }, [live, upcoming, recent]);
 
-  // 5) Gestion du changement utilisateur + mémoire
   const handleRoundChange = (r) => {
     setRound(r);
-    defaultRoundSet.current = true; // à partir de maintenant, on respecte son choix
+    defaultRoundSet.current = true;
     localStorage.setItem(ROUND_KEY, r === null ? "null" : String(r));
   };
 
-  // Flux unique
   const feed = useMemo(() => {
     const map = new Map();
     const push = (list) => (list || []).forEach((m) => { if (!map.has(m.id)) map.set(m.id, m); });
@@ -484,13 +458,11 @@ export default function Home() {
     return Array.from(map.values());
   }, [live, upcoming, postponed, suspended, canceled, recent]);
 
-  // Filtre par journée
   const feedFiltered = useMemo(() => {
     if (round == null) return feed;
     return feed.filter((m) => matchRoundNum(m) === Number(round));
   }, [feed, round]);
 
-  // Tri final
   const statusRank = (s) => {
     const uu = (s || "").toUpperCase();
     if (uu === "LIVE" || uu === "HT" || uu === "PAUSED") return 0;
@@ -508,37 +480,33 @@ export default function Home() {
       const ra = statusRank(a.status);
       const rb = statusRank(b.status);
       if (ra !== rb) return ra - rb;
-      if (ra === 0) { // LIVE : plus avancé d’abord
-        return Number(b.minute ?? 0) - Number(a.minute ?? 0);
-      }
-      if (ra === 1) { // FT : plus récent d’abord
-        return timeMs(b.datetime) - timeMs(a.datetime);
-      }
-      if (ra === 2) { // SCHEDULED : le plus proche d’abord
-        return timeMs(a.datetime) - timeMs(b.datetime);
-      }
+      if (ra === 0) return Number(b.minute ?? 0) - Number(a.minute ?? 0); // LIVE : plus avancé
+      if (ra === 1) return timeMs(b.datetime) - timeMs(a.datetime); // FT : récent d’abord
+      if (ra === 2) return timeMs(a.datetime) - timeMs(b.datetime); // Prévu : le plus proche
       return timeMs(b.datetime) - timeMs(a.datetime);
     });
   }, [feedFiltered]);
 
-  if (loading) return <p>Chargement…</p>;
-  if (error) return <p className="text-red-600">Erreur : {error}</p>;
+  if (loading) return <p className="px-3">Chargement…</p>;
+  if (error) return <p className="px-3 text-red-600">Erreur : {error}</p>;
 
   return (
-    <section className="space-y-4">
-      <header className="flex items-baseline justify-between">
-        <h1 className="text-2xl font-bold">Ligue 1 Salam</h1>
-      </header>
+    <div className="mx-auto max-w-[480px] px-3 pb-24"> {/* 🔒 Cadre mobile */}
+      <section className="space-y-4">
+        <header className="flex items-baseline justify-between">
+          <h1 className="text-2xl font-bold">Ligue 1 Salam</h1>
+        </header>
 
-      <MatchdayBar selected={round} onChange={handleRoundChange} max={26} />
+        <MatchdayBar selected={round} onChange={handleRoundChange} max={26} />
 
-      <ul className="grid gap-4">
-        {feedSorted.map((m) => (
-          <li key={m.id}>
-            <MatchCard m={m} />
-          </li>
-        ))}
-      </ul>
-    </section>
+        <ul className="grid gap-4">
+          {feedSorted.map((m) => (
+            <li key={m.id}>
+              <MatchCard m={m} />
+            </li>
+          ))}
+        </ul>
+      </section>
+    </div>
   );
 }
