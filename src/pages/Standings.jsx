@@ -88,7 +88,20 @@ export default function Standings() {
     <section className="mx-auto max-w-4xl px-3 pb-20">
       <h1 className="text-2xl font-bold mb-4">Classement</h1>
 
-      {/* === Mobile (Android/iOS) : cartes compactes, pas de scroll horizontal === */}
+      {/* ==== Mobile (Android/iOS) ==== */}
+      {/* Barre d'entête alignée sur les colonnes MJ / Diff / Pts */}
+      <div className="sm:hidden flex items-center justify-between px-3 py-1 text-[11px] uppercase text-slate-500">
+        {/* Espace réservé à la partie gauche (rang + logo + nom) */}
+        <span className="sr-only">Rang, club</span>
+        <div className="flex-1" />
+        {/* En-têtes à droite, largeurs = valeurs plus bas */}
+        <div className="flex items-center gap-3 tabular-nums">
+          <span className="w-4 text-center">MJ</span>
+          <span className="w-7 text-center">Diff</span>
+          <span className="w-6 text-center">Pts</span>
+        </div>
+      </div>
+
       <ul className="grid gap-2 sm:hidden">
         {rows.map((r, i) => {
           const live = liveSet.has(r.club_id);
@@ -120,7 +133,7 @@ export default function Standings() {
                   className="w-6 h-6 object-contain shrink-0"
                   onError={(e) => (e.currentTarget.src = "/club-placeholder.png")}
                 />
-                <span className="text-sm font-medium text-gray-900 truncate max-w-[140px]">
+                <span className="text-sm font-medium text-gray-900 truncate max-w-[160px]">
                   {r.club_name}
                 </span>
                 {live && (
@@ -133,16 +146,16 @@ export default function Standings() {
 
               {/* Stats compactes (MJ / Diff / Pts) */}
               <div className="flex items-center gap-3 text-[12px] tabular-nums">
-                <span className="w-4 text-center text-gray-600" title="Matchs joués">
+                <span className="w-4 text-center text-gray-600" aria-label="Matchs joués">
                   {r.played}
                 </span>
                 <span
                   className={`w-7 text-center font-semibold ${diff < 0 ? "text-red-600" : "text-gray-800"}`}
-                  title="Différence de buts"
+                  aria-label="Différence de buts"
                 >
                   {diff}
                 </span>
-                <span className="w-6 text-center font-bold text-gray-900" title="Points">
+                <span className="w-6 text-center font-bold text-gray-900" aria-label="Points">
                   {r.points}
                 </span>
               </div>
@@ -151,7 +164,7 @@ export default function Standings() {
         })}
       </ul>
 
-      {/* === sm+ : tableau complet (desktop/tablette) === */}
+      {/* ==== sm+ : tableau complet ==== */}
       <div className="hidden sm:block overflow-x-auto rounded-2xl ring-1 ring-gray-200 shadow-sm bg-white">
         <table className="min-w-full bg-white border-separate border-spacing-y-2">
           <thead className="bg-gray-50 text-xs uppercase text-gray-600">
@@ -168,7 +181,6 @@ export default function Standings() {
               <th className="px-3 py-2 text-center">Pts</th>
             </tr>
           </thead>
-
           <tbody className="text-sm">
             {rows.map((r, i) => {
               const live = liveSet.has(r.club_id);
@@ -183,15 +195,12 @@ export default function Standings() {
                   ? "ring-rose-300 bg-rose-50"
                   : "ring-blue-200 bg-white";
 
-              const diff = r.goal_diff ?? (r.goals_for ?? 0) - (r.goals_against ?? 0);
+              const diff =
+                r.goal_diff ?? (r.goals_for ?? 0) - (r.goals_against ?? 0);
 
               return (
-                <tr
-                  key={r.club_id}
-                  className={`rounded-lg ring-1 ${ring}`}
-                >
+                <tr key={r.club_id} className={`rounded-lg ring-1 ${ring}`}>
                   <td className="px-3 py-2">{i + 1}</td>
-
                   <td className="px-3 py-2">
                     <div className="flex items-center gap-2 min-w-0">
                       <img
@@ -209,7 +218,6 @@ export default function Standings() {
                       )}
                     </div>
                   </td>
-
                   <td className="px-3 py-2 text-center tabular-nums">{r.played}</td>
                   <td className="px-3 py-2 text-center tabular-nums">{r.wins}</td>
                   <td className="px-3 py-2 text-center tabular-nums">{r.draws}</td>
