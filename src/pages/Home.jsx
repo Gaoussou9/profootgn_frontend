@@ -206,7 +206,7 @@ function MatchdayBar({ selected, onChange, max = 26 }) {
   );
 }
 
-/* ---------- Carte Match (grille stable & noms sur 2 lignes) ---------- */
+/* ---------- Carte Match (wrap propre + style pro) ---------- */
 function MatchCard({ m }) {
   const status = (m.status || "").toUpperCase();
   const isScheduled = status === "SCHEDULED" || status === "NOT_STARTED";
@@ -226,27 +226,26 @@ function MatchCard({ m }) {
   return (
     <Link
       to={`/match/${m.id}`}
-      className="relative block bg-white rounded-2xl shadow-sm ring-1 ring-gray-100 p-4 hover:shadow-md transition"
+      className="group relative block bg-white rounded-2xl shadow-sm ring-1 ring-gray-100 p-4 hover:shadow-md transition"
     >
-      {/* Badge statut en haut-droite */}
+      {/* Badge statut */}
       <div className={`absolute right-3 top-3 text-[11px] px-2 py-1 rounded-full ring-1 ${statusClasses(status)}`}>
         {isLive && <span className="mr-1 inline-block w-2 h-2 bg-red-500 rounded-full animate-pulse align-middle" />}
-        {statusLabel(status)}
-        {minuteLabel ? ` • ${minuteLabel}` : ""}
+        {statusLabel(status)}{minuteLabel ? ` • ${minuteLabel}` : ""}
       </div>
 
-      {/* Badge journée (facultatif) */}
-      {m.round_name ? (
+      {/* Badge Jx */}
+      {m.round_name && (
         <div className="absolute left-3 top-3 text-[11px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 ring-1 ring-gray-200">
           {m.round_name}
         </div>
-      ) : null}
+      )}
 
-      {/* Grille 1fr / auto / score / auto / 1fr (stable mobile) */}
+      {/* Grille stable */}
       <div className="grid grid-cols-[1fr,auto,4.75rem,auto,1fr] sm:grid-cols-[1fr,auto,5.25rem,auto,1fr] items-center gap-2 min-h-[72px]">
         <div className="min-w-0 text-right pr-1">
           <span
-            className="block text-[15px] sm:text-base font-medium clamp-2 break-anywhere"
+            className="block text-[15px] sm:text-base font-medium text-gray-900 no-underline clamp-2 nice-wrap group-hover:underline decoration-gray-300"
             title={homeName}
           >
             {homeName}
@@ -263,14 +262,8 @@ function MatchCard({ m }) {
           ) : isPostponed ? (
             <span className="text-gray-400 font-semibold">—</span>
           ) : (
-            <span
-              className={`text-xl sm:text-2xl font-extrabold leading-none tabular-nums ${
-                isSuspended || isCanceled ? "line-through text-gray-400" : ""
-              }`}
-            >
-              {m.home_score}
-              <span className="text-gray-400"> - </span>
-              {m.away_score}
+            <span className={`text-xl sm:text-2xl font-extrabold leading-none tabular-nums ${isSuspended || isCanceled ? "line-through text-gray-400" : ""}`}>
+              {m.home_score}<span className="text-gray-400"> - </span>{m.away_score}
             </span>
           )}
         </div>
@@ -281,7 +274,7 @@ function MatchCard({ m }) {
 
         <div className="min-w-0 text-left pl-1">
           <span
-            className="block text-[15px] sm:text-base font-medium clamp-2 break-anywhere"
+            className="block text-[15px] sm:text-base font-medium text-gray-900 no-underline clamp-2 nice-wrap group-hover:underline decoration-gray-300"
             title={awayName}
           >
             {awayName}
@@ -290,8 +283,7 @@ function MatchCard({ m }) {
       </div>
 
       <div className="text-[12px] text-gray-500 mt-2">
-        {fmtDate(m.datetime)}
-        {m.venue ? ` • ${m.venue}` : ""}
+        {fmtDate(m.datetime)}{m.venue ? ` • ${m.venue}` : ""}
       </div>
     </Link>
   );

@@ -77,4 +77,9 @@
       black calc(100% - 12px),
       transparent);
   }
+  .nice-wrap{
+  overflow-wrap: normal;
+  word-break: keep-all;
+  hyphens: auto;            /* nécessite lang="fr" au HTML pour de beaux traits d’union */
+}
 }
