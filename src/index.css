@@ -103,5 +103,17 @@
   font-size: clamp(13px, 3.5vw, 15px); /* ajuste légèrement la taille selon la largeur */
   text-align: center;
 }
+/* Rend le scroll et les rebonds plus “natifs” sur iOS/Android */
+.touch-smooth{
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Petite ombre animée lors du hover/focus (ne s’active que si l’OS autorise l’animation) */
+@media (prefers-reduced-motion: no-preference){
+  .card-anim{
+    transition: box-shadow .25s ease, transform .2s ease;
+  }
+  .card-anim:active{ transform: scale(.99); }
+}
 
 }

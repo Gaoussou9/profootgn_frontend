@@ -10,7 +10,7 @@ export default function Standings() {
   const [logoMap, setLogoMap] = useState(new Map());
   const prevRef = useRef(new Map());
 
-  // Charge les logos une fois
+  // Charger les logos (une seule fois)
   useEffect(() => {
     (async () => {
       try {
@@ -24,6 +24,7 @@ export default function Standings() {
     })();
   }, []);
 
+  // Récup standings + live
   const fetchData = async () => {
     try {
       const [stRes, liveRes] = await Promise.all([
@@ -31,7 +32,6 @@ export default function Standings() {
         api.get("matches/live/"),
       ]);
 
-      // parser robuste
       const parseStandings = (data) => {
         if (Array.isArray(data)) return data;
         if (data && Array.isArray(data.table)) return data.table;
@@ -49,7 +49,7 @@ export default function Standings() {
         liveMatches.flatMap((m) => [m.home_club, m.away_club]).filter(Boolean)
       );
 
-      // détecter les changements
+      // marquer les lignes qui changent
       const prev = prevRef.current;
       const enriched = st.map((r) => {
         const p = prev.get(r.club_id);
@@ -85,11 +85,74 @@ export default function Standings() {
   const lastIdx = Math.max(0, rows.length - 1);
 
   return (
-    <section className="max-w-5xl mx-auto">
+    <section className="mx-auto max-w-4xl px-3 pb-20">
       <h1 className="text-2xl font-bold mb-4">Classement</h1>
 
-      <div className="overflow-x-auto rounded-2xl ring-1 ring-gray-200 shadow-sm bg-white">
-        {/* border-separate + spacing pour pouvoir "encadrer" chaque ligne */}
+      {/* === Mobile (Android/iOS) : cartes compactes, pas de scroll horizontal === */}
+      <ul className="grid gap-2 sm:hidden">
+        {rows.map((r, i) => {
+          const live = liveSet.has(r.club_id);
+          const logoSrc = r.club_logo || logoMap.get(r.club_id) || "/club-placeholder.png";
+
+          const isTop2 = i < 2;
+          const isBottom2 = i >= lastIdx - 1;
+          const ring = isTop2
+            ? "ring-emerald-300 bg-emerald-50"
+            : isBottom2
+            ? "ring-rose-300 bg-rose-50"
+            : "ring-blue-200 bg-white";
+
+          const diff = r.goal_diff ?? (r.goals_for ?? 0) - (r.goals_against ?? 0);
+
+          return (
+            <li
+              key={r.club_id}
+              className={`flex items-center justify-between gap-2 px-3 py-2 rounded-xl ring-1 ${ring}`}
+            >
+              {/* Rang + logo + nom */}
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-sm font-semibold w-5 text-gray-500 text-right">
+                  {i + 1}
+                </span>
+                <img
+                  src={logoSrc}
+                  alt={r.club_name}
+                  className="w-6 h-6 object-contain shrink-0"
+                  onError={(e) => (e.currentTarget.src = "/club-placeholder.png")}
+                />
+                <span className="text-sm font-medium text-gray-900 truncate max-w-[140px]">
+                  {r.club_name}
+                </span>
+                {live && (
+                  <span className="ml-1 inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-red-100 text-red-700">
+                    <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
+                    LIVE
+                  </span>
+                )}
+              </div>
+
+              {/* Stats compactes (MJ / Diff / Pts) */}
+              <div className="flex items-center gap-3 text-[12px] tabular-nums">
+                <span className="w-4 text-center text-gray-600" title="Matchs joués">
+                  {r.played}
+                </span>
+                <span
+                  className={`w-7 text-center font-semibold ${diff < 0 ? "text-red-600" : "text-gray-800"}`}
+                  title="Différence de buts"
+                >
+                  {diff}
+                </span>
+                <span className="w-6 text-center font-bold text-gray-900" title="Points">
+                  {r.points}
+                </span>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+
+      {/* === sm+ : tableau complet (desktop/tablette) === */}
+      <div className="hidden sm:block overflow-x-auto rounded-2xl ring-1 ring-gray-200 shadow-sm bg-white">
         <table className="min-w-full bg-white border-separate border-spacing-y-2">
           <thead className="bg-gray-50 text-xs uppercase text-gray-600">
             <tr>
@@ -109,12 +172,10 @@ export default function Standings() {
           <tbody className="text-sm">
             {rows.map((r, i) => {
               const live = liveSet.has(r.club_id);
-              const logoSrc =
-                r.club_logo || logoMap.get(r.club_id) || "/club-placeholder.png";
+              const logoSrc = r.club_logo || logoMap.get(r.club_id) || "/club-placeholder.png";
 
-              // —— Encadrement complet: top2 vert, bottom2 rouge, autres bleu ——
               const isTop2 = i < 2;
-              const isBottom2 = i >= lastIdx - 1; // 2 derniers
+              const isBottom2 = i >= lastIdx - 1;
               const ring =
                 isTop2
                   ? "ring-emerald-300 bg-emerald-50"
@@ -122,13 +183,12 @@ export default function Standings() {
                   ? "ring-rose-300 bg-rose-50"
                   : "ring-blue-200 bg-white";
 
-              const diff =
-                r.goal_diff ?? (r.goals_for ?? 0) - (r.goals_against ?? 0);
+              const diff = r.goal_diff ?? (r.goals_for ?? 0) - (r.goals_against ?? 0);
 
               return (
                 <tr
                   key={r.club_id}
-                  className={`rounded-lg ring-1 ${ring} ${r._changed ? "animate-[pulse_0.9s_ease-out_1]" : ""}`}
+                  className={`rounded-lg ring-1 ${ring}`}
                 >
                   <td className="px-3 py-2">{i + 1}</td>
 
@@ -165,11 +225,8 @@ export default function Standings() {
         </table>
       </div>
 
-
-
-      
- {/* Légende */}
-      <div className="flex flex-wrap items-center gap-4 text-xs text-slate-600">
+      {/* Légende */}
+      <div className="flex flex-wrap items-center gap-4 text-xs text-slate-600 mt-3">
         <span className="inline-flex items-center gap-2">
           <span className="inline-block w-3 h-3 rounded ring-2 ring-emerald-400 bg-emerald-50" />
           LdC
