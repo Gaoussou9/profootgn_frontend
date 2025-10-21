@@ -206,7 +206,7 @@ function MatchdayBar({ selected, onChange, max = 26 }) {
   );
 }
 
-/* ---------- Carte Match (grille stable & noms sur 2 lignes) ---------- */
+/* ---------- Carte Match (wrap propre + style pro) ---------- */
 function MatchCard({ m }) {
   const status = (m.status || "").toUpperCase();
   const isScheduled = status === "SCHEDULED" || status === "NOT_STARTED";
@@ -226,7 +226,7 @@ function MatchCard({ m }) {
   return (
     <Link
       to={`/match/${m.id}`}
-      className="relative block bg-white rounded-2xl shadow-sm ring-1 ring-gray-100 p-4 hover:shadow-md transition"
+      className="group relative block bg-white rounded-2xl shadow-sm ring-1 ring-gray-100 p-4 hover:shadow-md transition"
     >
       {/* Badge statut en haut-droite */}
       <div className={`absolute right-3 top-3 text-[11px] px-2 py-1 rounded-full ring-1 ${statusClasses(status)}`}>
@@ -246,7 +246,7 @@ function MatchCard({ m }) {
       <div className="grid grid-cols-[1fr,auto,4.75rem,auto,1fr] sm:grid-cols-[1fr,auto,5.25rem,auto,1fr] items-center gap-2 min-h-[72px]">
         <div className="min-w-0 text-right pr-1">
           <span
-            className="block text-[15px] sm:text-base font-medium clamp-2 break-anywhere"
+            className="block text-[15px] sm:text-base font-medium text-gray-900 no-underline clamp-2 nice-wrap group-hover:underline decoration-gray-300"
             title={homeName}
           >
             {homeName}
@@ -281,7 +281,7 @@ function MatchCard({ m }) {
 
         <div className="min-w-0 text-left pl-1">
           <span
-            className="block text-[10px] sm:text-base font-medium clamp-2 break-anywhere"
+            className="block text-[15px] sm:text-base font-medium text-gray-900 no-underline clamp-2 nice-wrap group-hover:underline decoration-gray-300"
             title={awayName}
           >
             {awayName}
@@ -289,7 +289,7 @@ function MatchCard({ m }) {
         </div>
       </div>
 
-      <div className="text-[10px] text-gray-500 mt-2">
+      <div className="text-[12px] text-gray-500 mt-2">
         {fmtDate(m.datetime)}
         {m.venue ? ` • ${m.venue}` : ""}
       </div>
@@ -376,7 +376,7 @@ export default function Home() {
             api.get("matches/?status=FT&ordering=-datetime&page_size=200")
           ),
           api.get("matches/?status=SUSPENDED&ordering=-datetime&page_size=200").catch(() => ({ data: [] })),
-          api.get("matches/?status=POSTPONED&ordering=-datetime&page_size=200").catch(() => ({ data: [] })),
+          api.get("matches/?status=POSTPONED&ordering=-datetime?page_size=200").catch(() => ({ data: [] })),
           api.get("matches/?status=CANCELED&ordering=-datetime&page_size=200").catch(() => ({ data: [] })),
         ]);
 
@@ -497,10 +497,10 @@ export default function Home() {
   if (error) return <p className="px-3 text-red-600">Erreur : {error}</p>;
 
   return (
-    <div className="mx-auto max-w-[280px] px-3 pb-24"> {/* 🔒 Cadre mobile */}
+    <div className="mx-auto max-w-[480px] px-3 pb-24"> {/* 🔒 Cadre mobile */}
       <section className="space-y-4">
         <header className="flex items-baseline justify-between">
-          <h1 className="text-2xl font-bold">Ligue 1 Salam</h1>
+          <h1 className="text-2xl font-bold">Ligue 1 Guinéenne</h1>
         </header>
 
         <MatchdayBar selected={round} onChange={handleRoundChange} max={26} />
