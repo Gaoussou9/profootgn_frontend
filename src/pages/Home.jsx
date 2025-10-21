@@ -206,7 +206,7 @@ function MatchdayBar({ selected, onChange, max = 26 }) {
   );
 }
 
-/* ---------- Carte Match (grille stable & textos tronqués) ---------- */
+/* ---------- Carte Match (grille stable & noms sur 2 lignes) ---------- */
 function MatchCard({ m }) {
   const status = (m.status || "").toUpperCase();
   const isScheduled = status === "SCHEDULED" || status === "NOT_STARTED";
@@ -243,9 +243,12 @@ function MatchCard({ m }) {
       ) : null}
 
       {/* Grille 1fr / auto / score / auto / 1fr (stable mobile) */}
-      <div className="grid grid-cols-[1fr,auto,4.75rem,auto,1fr] items-center gap-2 min-h-[72px]">
+      <div className="grid grid-cols-[1fr,auto,4.75rem,auto,1fr] sm:grid-cols-[1fr,auto,5.25rem,auto,1fr] items-center gap-2 min-h-[72px]">
         <div className="min-w-0 text-right pr-1">
-          <span className="block text-[15px] sm:text-base font-medium truncate" title={homeName}>
+          <span
+            className="block text-[15px] sm:text-base font-medium clamp-2 break-anywhere"
+            title={homeName}
+          >
             {homeName}
           </span>
         </div>
@@ -254,7 +257,7 @@ function MatchCard({ m }) {
           <Logo src={homeLogo} alt={homeName} />
         </div>
 
-        <div className="w-[4.75rem] text-center">
+        <div className="w-[4.75rem] sm:w-[5.25rem] text-center">
           {isScheduled ? (
             <span className="text-gray-500 font-semibold">vs</span>
           ) : isPostponed ? (
@@ -277,7 +280,10 @@ function MatchCard({ m }) {
         </div>
 
         <div className="min-w-0 text-left pl-1">
-          <span className="block text-[15px] sm:text-base font-medium truncate" title={awayName}>
+          <span
+            className="block text-[15px] sm:text-base font-medium clamp-2 break-anywhere"
+            title={awayName}
+          >
             {awayName}
           </span>
         </div>
@@ -481,8 +487,8 @@ export default function Home() {
       const rb = statusRank(b.status);
       if (ra !== rb) return ra - rb;
       if (ra === 0) return Number(b.minute ?? 0) - Number(a.minute ?? 0); // LIVE : plus avancé
-      if (ra === 1) return timeMs(b.datetime) - timeMs(a.datetime); // FT : récent d’abord
-      if (ra === 2) return timeMs(a.datetime) - timeMs(b.datetime); // Prévu : le plus proche
+      if (ra === 1) return timeMs(b.datetime) - timeMs(a.datetime);      // FT : récent d’abord
+      if (ra === 2) return timeMs(a.datetime) - timeMs(b.datetime);      // Prévu : le plus proche
       return timeMs(b.datetime) - timeMs(a.datetime);
     });
   }, [feedFiltered]);
