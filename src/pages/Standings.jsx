@@ -229,7 +229,7 @@ export default function Standings() {
       <div className="flex flex-wrap items-center gap-4 text-xs text-slate-600 mt-3">
         <span className="inline-flex items-center gap-2">
           <span className="inline-block w-3 h-3 rounded ring-2 ring-emerald-400 bg-emerald-50" />
-          LdC
+          Play-Off LdC CAF
         </span>
         <span className="inline-flex items-center gap-2">
           <span className="inline-block w-3 h-3 rounded ring-2 ring-rose-400 bg-rose-50" />
