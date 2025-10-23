@@ -849,7 +849,7 @@ export default function MatchDetail() {
                           {/* Passeur — ligne 2, petit texte */}
                           {aFull && (
                             <div className="flex items-center gap-1 text-[11px] text-gray-500 mt-0.5">
-                              <span>Passe&nbsp;:</span>
+                              <span>&nbsp;:</span>
                               <span className="whitespace-normal">{aFull}</span>
                               <AssistIconImg />
                             </div>
