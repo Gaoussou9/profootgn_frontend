@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import api from "../api/client";
-import { usePlayerSheet } from "../components/PlayerSheet"; // ✅ fiche joueur
+import { usePlayerSheet } from "../components/PlayerSheet";
 
 /* ------------ Icône assist (crampon) ------------ */
 const ASSIST_ICON_SRC = "/icons/cleat_20.png";
@@ -22,12 +22,12 @@ const Logo = ({ src, alt, size = "w-12 h-12" }) => (
   <img
     src={src || "/club-placeholder.png"}
     alt={alt}
-    className={`${size} object-contain`}
+    className={`${size} rounded-md ring-1 ring-black/10 bg-white object-contain shrink-0`}
     onError={(e) => (e.currentTarget.src = "/club-placeholder.png")}
   />
 );
 
-// ⬇️ Avatar cliquable (utilisé dans la timeline d’événements)
+// Avatar cliquable (timeline)
 const TinyAvatar = ({ src, alt, size = 32, onClick }) => (
   <img
     src={src || "/player-placeholder.png"}
@@ -39,25 +39,13 @@ const TinyAvatar = ({ src, alt, size = 32, onClick }) => (
     onClick={onClick}
     role={onClick ? "button" : undefined}
     tabIndex={onClick ? 0 : undefined}
-    onKeyDown={
-      onClick
-        ? (e) => {
-            if (e.key === "Enter" || e.key === " ") onClick();
-          }
-        : undefined
-    }
+    onKeyDown={onClick ? (e) => { if (e.key === "Enter" || e.key === " ") onClick(); } : undefined}
     title={onClick ? `Voir la fiche de ${alt || "ce joueur"}` : alt}
   />
 );
 
 const BallIcon = ({ size = 18 }) => (
-  <span
-    className="inline-flex items-center justify-center leading-none select-none shrink-0"
-    style={{ width: size, height: size }}
-    aria-hidden
-  >
-    ⚽
-  </span>
+  <span className="inline-flex items-center justify-center leading-none select-none shrink-0" style={{ width: size, height: size }} aria-hidden>⚽</span>
 );
 
 const playerPhoto = (ev = {}) => {
@@ -65,7 +53,7 @@ const playerPhoto = (ev = {}) => {
   return p.photo || ev.player_photo || ev.photo || ev.playerPhoto || null;
 };
 
-// ⬇️ Récupère l'ID joueur depuis un événement (goal/card) si dispo
+// id joueur depuis un évènement
 const getEventPlayerId = (ev = {}) => {
   if (ev.player_id != null) return ev.player_id;
   if (typeof ev.player === "number") return ev.player;
@@ -77,16 +65,35 @@ const getEventPlayerId = (ev = {}) => {
 
 const statusClasses = (s) => {
   switch ((s || "").toUpperCase()) {
-    case "LIVE": return "bg-red-100 text-red-700 ring-1 ring-red-200";
+    case "LIVE":       return "bg-red-100 text-red-700 ring-1 ring-red-200";
     case "HT":
-    case "PAUSED": return "bg-amber-100 text-amber-700 ring-1 ring-amber-200";
-    case "SCHEDULED": return "bg-blue-100 text-blue-700 ring-1 ring-blue-200";
-    case "SUSPENDED": return "bg-zinc-100 text-zinc-700 ring-1 ring-zinc-200";
-    case "POSTPONED": return "bg-sky-100 text-sky-700 ring-1 ring-sky-200";
-    case "CANCELED":  return "bg-rose-100 text-rose-700 ring-1 ring-rose-200";
+    case "PAUSED":     return "bg-amber-100 text-amber-700 ring-1 ring-amber-200";
+    case "SCHEDULED":
+    case "NOT_STARTED":return "bg-blue-100 text-blue-700 ring-1 ring-blue-200";
+    case "SUSPENDED":  return "bg-zinc-100 text-zinc-700 ring-1 ring-zinc-200";
+    case "POSTPONED":  return "bg-sky-100 text-sky-700 ring-1 ring-sky-200";
+    case "CANCELED":
+    case "CANCELLED":  return "bg-rose-100 text-rose-700 ring-1 ring-rose-200";
     case "FINISHED":
-    case "FT": return "bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200";
-    default: return "bg-gray-100 text-gray-700 ring-1 ring-gray-200";
+    case "FT":         return "bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200";
+    default:           return "bg-gray-100 text-gray-700 ring-1 ring-gray-200";
+  }
+};
+
+const statusLabel = (s) => {
+  switch ((s || "").toUpperCase()) {
+    case "SCHEDULED": return "Prévu";
+    case "NOT_STARTED": return "À venir";
+    case "LIVE": return "LIVE";
+    case "HT": return "Mi-temps";
+    case "PAUSED": return "Pause";
+    case "SUSPENDED": return "Suspendu";
+    case "POSTPONED": return "Reporté";
+    case "CANCELED":
+    case "CANCELLED": return "Annulé";
+    case "FT":
+    case "FINISHED": return "FT";
+    default: return s || "-";
   }
 };
 
@@ -109,7 +116,7 @@ function useLiveClock(matchId, status, apiMinute) {
   const [isSecondHalf, setIsSecondHalf] = useState(false);
   const timerRef = useRef(null);
 
-  const readNum = (k, d=null)=>{ try{const n=Number(localStorage.getItem(k));return Number.isFinite(n)?n:d;}catch{return d;}};
+  const readNum = (k, d=null)=>{ try{const n=Number(localStorage.getItem(k));return Number.isFinite(n)?n:d;}catch{return d;} };
   const readStr = (k)=>{ try{return localStorage.getItem(k);}catch{return null;} };
   const write   = (k,v)=>{ try{localStorage.setItem(k,String(v));}catch{} };
   const del     = (k)=>{ try{localStorage.removeItem(k);}catch{} };
@@ -185,6 +192,7 @@ function formatMinuteForBadge(status, minute, isSecondHalf) {
   return n >= 45 ? "45’+" : `${n}'`;
 }
 
+/* ---------- Row (timeline) ---------- */
 const Row = ({ left, center, right }) => (
   <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 py-2">
     <div className="flex items-center gap-2 min-w-0">{left}</div>
@@ -195,27 +203,18 @@ const Row = ({ left, center, right }) => (
 
 /* ===================== helpers noms & note ===================== */
 const displayName = (p = {}) =>
-  p.player_display ||
-  p.player_name ||
-  p.name ||
+  p.player_display || p.player_name || p.name ||
   [p.first_name, p.last_name].filter(Boolean).join(" ").trim() ||
-  (p.player && [p.player.first_name, p.player.last_name].filter(Boolean).join(" ").trim()) ||
-  "";
+  (p.player && [p.player.first_name, p.player.last_name].filter(Boolean).join(" ").trim()) || "";
 
 const shortName = (p = {}) => {
   const first = p.first_name ?? p.player_first_name ?? p.player?.first_name ?? null;
   const last  = p.last_name ?? p.player_last_name ?? p.player?.last_name ?? null;
-  if (first && last) {
-    const ini = first.trim()[0]?.toUpperCase() || "";
-    return `${ini}. ${last}`.trim();
-  }
+  if (first && last) return `${(first.trim()[0] || "").toUpperCase()}. ${last}`.trim();
   const full = displayName(p);
   if (full) {
     const parts = full.split(/\s+/).filter(Boolean);
-    if (parts.length >= 2) {
-      const ini = parts[0][0]?.toUpperCase() || "";
-      return `${ini}. ${parts[parts.length - 1]}`;
-    }
+    if (parts.length >= 2) return `${(parts[0][0] || "").toUpperCase()}. ${parts.at(-1)}`;
     return full;
   }
   return "";
@@ -249,11 +248,10 @@ const isStarting = (p) => {
 
 /* ===================== Événements -> stats par joueur ===================== */
 const normName = (s) => (String(s || "").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase());
-const bestNameFor = (p) =>
-  displayName(p) || shortName(p) || p.player_name || [p.first_name, p.last_name].filter(Boolean).join(" ").trim();
+const bestNameFor = (p) => displayName(p) || shortName(p) || p.player_name || [p.first_name, p.last_name].filter(Boolean).join(" ").trim();
 
 function buildEventStats(m) {
-  const stats = {}; // key = normalized name
+  const stats = {};
   const bump = (name, field) => {
     if (!name) return;
     const k = normName(name);
@@ -263,9 +261,7 @@ function buildEventStats(m) {
 
   (m.goals || []).forEach(g => {
     bump(g.player_name || g.player?.name || bestNameFor(g.player || {}), "goals");
-    const a =
-      g.assist_name ||
-      g.assist_player_name ||
+    const a = g.assist_name || g.assist_player_name ||
       (g.assist && (g.assist.name || `${g.assist.first_name || ""} ${g.assist.last_name || ""}`).trim());
     if (a) bump(a, "assists");
   });
@@ -282,18 +278,12 @@ function buildEventStats(m) {
 
 /* ===================== COMPOS – PlayerChip ===================== */
 const PlayerChip = ({
-  id, // (optionnel) player id si dispo
-  clubId, // (optionnel)
-  name,
-  number,
-  photo,
-  isCaptain = false,
-  note = null,
-  isMotm = false,
+  id, clubId, name, number, photo,
+  isCaptain = false, note = null, isMotm = false,
   ev = { goals: 0, assists: 0, yellow: 0, red: 0 },
-  raw, // objet brut de lineup
+  raw,
 }) => {
-  const { openSheet, openSheetSmart } = usePlayerSheet(); // ✅ clique depuis la compo
+  const { openSheet, openSheetSmart } = usePlayerSheet(); // ✅ une seule fois (pas dans un map)
   const label = (name && String(name).trim()) || "";
   const showNote = Number.isFinite(Number(note)) && Number(note) > 0 ? Number(note) : null;
 
@@ -305,7 +295,7 @@ const PlayerChip = ({
 
   const hasCards = (ev.yellow || 0) > 0 || (ev.red || 0) > 0;
 
-  // 🔗 Essaie d'obtenir le meilleur id possible depuis la ligne
+  // id “deviné” si pas fourni
   const guessedId =
     id ??
     raw?.player_id ??
@@ -314,8 +304,7 @@ const PlayerChip = ({
 
   const onClick = () => {
     if (guessedId) return openSheet(guessedId);
-    // fallback: ouvrir par nom + club
-    const nm = label || bestNameFor(raw || {});
+    const nm = label || bestNameFor(raw || {}); // fallback recherche
     const cId = clubId ?? getClubId(raw || {});
     openSheetSmart({ name: nm, clubId: cId });
   };
@@ -331,19 +320,17 @@ const PlayerChip = ({
           onClick={onClick}
         />
 
-        {/* Étoile MOTM — haut-gauche */}
-        {isMotm && (
-          <span className="absolute -top-4 -left-4 text-yellow-400 text-4xl drop-shadow">★</span>
-        )}
+        {/* MOTM */}
+        {isMotm && (<span className="absolute -top-4 -left-4 text-yellow-400 text-4xl drop-shadow">★</span>)}
 
-        {/* NOTE — haut-centre */}
+        {/* NOTE */}
         {showNote != null && (
           <span className={`absolute -top-3 left-1/2 -translate-x-1/2 text-[11px] font-semibold rounded px-1 ${ratingClass}`}>
             {showNote.toFixed(1)}
           </span>
         )}
 
-        {/* BUTS + ASSISTS — haut-droite (pile) */}
+        {/* BUTS / ASSISTS */}
         {(ev.goals > 0 || ev.assists > 0) && (
           <div className="absolute -top-1 -right-3 flex flex-col items-center gap-0.5">
             {ev.goals > 0 && (
@@ -359,24 +346,18 @@ const PlayerChip = ({
           </div>
         )}
 
-        {/* CARTONS — côté gauche (pile) */}
+        {/* CARTONS */}
         {hasCards && (
           <div className="absolute top-1/2 left-0 flex flex-col gap-0.5">
-            {Array.from({length: ev.yellow || 0}).map((_,i)=>(
-              <span key={`y-${i}`} className="w-4 h-5 bg-yellow-300 border border-yellow-600 rounded-sm shadow-[0_0_0_1px_rgba(0,0,0,0.05)]" />
-            ))}
-            {Array.from({length: ev.red || 0}).map((_,i)=>(
-              <span key={`r-${i}`} className="w-4 h-5 bg-red-500 border border-red-700 rounded-sm shadow-[0_0_0_1px_rgba(0,0,0,0.05)]" />
-            ))}
+            {Array.from({length: ev.yellow || 0}).map((_,i)=>(<span key={`y-${i}`} className="w-4 h-5 bg-yellow-300 border border-yellow-600 rounded-sm" />))}
+            {Array.from({length: ev.red || 0}).map((_,i)=>(<span key={`r-${i}`} className="w-4 h-5 bg-red-500 border border-red-700 rounded-sm" />))}
           </div>
         )}
 
-        {/* CAPITAINE — bas-droite */}
-        {isCaptain && (
-          <span className="absolute -bottom-1 -right-1 text-[11px] font-bold bg-sky-600 text-white rounded px-1">C</span>
-        )}
+        {/* CAPITAINE */}
+        {isCaptain && (<span className="absolute -bottom-1 -right-1 text-[11px] font-bold bg-sky-600 text-white rounded px-1">C</span>)}
 
-        {/* NUMÉRO — bas-centre */}
+        {/* NUMÉRO */}
         {Number.isFinite(Number(number)) && (
           <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 text-[11px] font-bold bg-black/75 text-white rounded px-1">
             {number}
@@ -384,9 +365,9 @@ const PlayerChip = ({
         )}
       </div>
 
-      {/* Nom */}
-      <div className="mt-1 max-w-[120px] px-2 py-0.5 rounded-full bg-black text-white text-[11px] leading-tight truncate">
-        {label}
+      {/* Nom (2 lignes max sur mobile) */}
+      <div className="mt-1 max-w-[120px] px-2 py-0.5 rounded-full bg-black text-white text-[11px] leading-tight overflow-hidden">
+        <span className="line-clamp-2">{label}</span>
       </div>
     </div>
   );
@@ -398,18 +379,14 @@ const parseFormation = (formationStr, starters) => {
     return formationStr.split("-").map(n => Number(n));
   }
   const count = (prefix) => starters.filter(p => (p.position || "").toUpperCase().startsWith(prefix)).length;
-  const d = count("D") || 4;
-  const m = count("M") || 3;
-  const f = count("F") || count("A") || 3;
+  const d = count("D") || 4; const m = count("M") || 3; const f = count("F") || count("A") || 3;
   return [d, m, f];
 };
 
 const makeLines = (starters, formationStr) => {
   const GK = starters.filter(p => (p.position || "").toUpperCase().startsWith("G"));
   const field = starters.filter(p => !(p.position || "").toUpperCase().startsWith("G"));
-  field.sort(
-    (a,b)=>(a.number??999)-(b.number??999) || String(displayName(a)).localeCompare(String(displayName(b)))
-  );
+  field.sort((a,b)=>(a.number??999)-(b.number??999) || String(displayName(a)).localeCompare(String(displayName(b))));
   const counts = parseFormation(formationStr, starters);
   const lines = [];
   lines.push(field.splice(0, counts[0]));
@@ -420,10 +397,7 @@ const makeLines = (starters, formationStr) => {
 };
 
 const Pitch = ({ children }) => (
-  <div
-    className="relative w-full rounded-2xl border bg-[linear-gradient(180deg,#1b7f3a_0%,#1a6d33_100%)]"
-    style={{ aspectRatio: "16 / 18" }}
-  >
+  <div className="relative w-full rounded-2xl border bg-[linear-gradient(180deg,#1b7f3a_0%,#1a6d33_100%)]" style={{ aspectRatio: "16 / 18" }}>
     <div className="absolute inset-2 rounded-xl border-2 border-white/70 pointer-events-none" />
     <div className="absolute inset-y-2 left-1/2 w-0.5 bg-white/70 pointer-events-none" />
     <div className="absolute left-2 right-2 top-1/4 h-px bg-white/20 pointer-events-none" />
@@ -464,6 +438,8 @@ const TeamLineupCard = ({ title, logo, starters, subs, formation, coachName, tea
     );
   };
 
+  const { openSheet, openSheetSmart } = usePlayerSheet(); // ✅ ici (une seule fois)
+
   return (
     <div className="border rounded-2xl p-4 bg-white/60">
       <div className="flex items-center gap-3 mb-3">
@@ -472,27 +448,15 @@ const TeamLineupCard = ({ title, logo, starters, subs, formation, coachName, tea
       </div>
 
       <Pitch>
-        {gk && (
-          <div className="absolute left-1/2 -translate-x-1/2 bottom-[8%]">
-            {chipFor(gk)}
-          </div>
-        )}
-
+        {gk && (<div className="absolute left-1/2 -translate-x-1/2 bottom-[8%]">{chipFor(gk)}</div>)}
         {rows.map((line, i) => {
           const bottoms = ["35%", "52%", "70%", "80%"];
           const bottom = bottoms[i] || `${80 - i * 12}%`;
           const count = Math.max(line.length, 1);
           return (
             <div key={i} className="absolute inset-x-3" style={{ bottom }}>
-              <div
-                className="grid"
-                style={{ gridTemplateColumns: `repeat(${count}, minmax(0, 1fr))`, columnGap: 24 }}
-              >
-                {line.map((p, idx) => (
-                  <div key={idx} className="flex justify-center">
-                    {chipFor(p)}
-                  </div>
-                ))}
+              <div className="grid" style={{ gridTemplateColumns: `repeat(${count}, minmax(0, 1fr))`, columnGap: 24 }}>
+                {line.map((p, idx) => (<div key={idx} className="flex justify-center">{chipFor(p)}</div>))}
               </div>
             </div>
           );
@@ -515,10 +479,7 @@ const TeamLineupCard = ({ title, logo, starters, subs, formation, coachName, tea
               const nm = bestNameFor(p);
               const rating = getRating(p);
               const ratingClass =
-                rating == null ? ""
-                : rating < 5 ? "bg-red-100 text-red-700"
-                : rating < 7.5 ? "bg-blue-100 text-blue-700"
-                : "bg-green-100 text-green-700";
+                rating == null ? "" : rating < 5 ? "bg-red-100 text-red-700" : rating < 7.5 ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700";
               const ev = evStats[normName(nm)] || { goals: 0, assists: 0, yellow: 0, red: 0 };
 
               return (
@@ -530,7 +491,6 @@ const TeamLineupCard = ({ title, logo, starters, subs, formation, coachName, tea
                     onError={(e)=>{ e.currentTarget.src="/player-placeholder.png"; }}
                     onClick={() => {
                       const pid = p.player_id ?? (typeof p.player === "number" ? p.player : p.player?.id) ?? null;
-                      const { openSheet, openSheetSmart } = usePlayerSheet();
                       if (pid) openSheet(pid); else openSheetSmart({ name: nm, clubId: getClubId(p) });
                     }}
                   />
@@ -553,11 +513,7 @@ const TeamLineupCard = ({ title, logo, starters, subs, formation, coachName, tea
                     </span>
                   )}
 
-                  {rating != null && (
-                    <span className={`text-[11px] font-semibold rounded px-1 ${ratingClass}`}>
-                      {rating.toFixed(1)}
-                    </span>
-                  )}
+                  {rating != null && (<span className={`text-[11px] font-semibold rounded px-1 ${ratingClass}`}>{rating.toFixed(1)}</span>)}
                 </li>
               );
             })}
@@ -629,7 +585,6 @@ function deriveLineupsFromMatch(m) {
       photo: toPhoto(p),
       is_captain: !!(p.captain || p.is_captain),
       rating: p.rating ?? p.note ?? null,
-      // si la source contient un vrai player_id, gardons-le
       player_id: p.player_id ?? (typeof p.player === "number" ? p.player : p.player?.id),
     }));
 
@@ -654,7 +609,7 @@ function deriveLineupsFromMatch(m) {
 export default function MatchDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { openSheet } = usePlayerSheet(); // (utilisé pour la timeline)
+  const { openSheet } = usePlayerSheet(); // pour la timeline
 
   const [m, setM] = useState(null);
   const [loading, setLoad] = useState(true);
@@ -707,7 +662,7 @@ export default function MatchDetail() {
 
   const status = (m?.status || "").toUpperCase();
   const isLiveLike = status === "LIVE" || status === "HT" || status === "PAUSED";
-  const isScheduled = status === "SCHEDULED";
+  const isScheduled = status === "SCHEDULED" || status === "NOT_STARTED";
   const isLive = status === "LIVE";
 
   const { minute, isSecondHalf } = useLiveClock(m?.id, status, m?.minute);
@@ -769,7 +724,7 @@ export default function MatchDetail() {
   const awayStarters = (lineups || []).filter(p => clubEq(p, m?.away_club) && isStarting(p));
   const awaySubs     = (lineups || []).filter(p => clubEq(p, m?.away_club) && !isStarting(p));
 
-  // Homme du match global (meilleure note parmi les titulaires)
+  // Homme du match (meilleure note parmi les titulaires)
   const globalMotmId = useMemo(() => {
     const starters = [...homeStarters, ...awayStarters];
     let best = null, bestVal = -1;
@@ -813,9 +768,7 @@ export default function MatchDetail() {
       ev.assist_name ||
       ev.assist ||
       ev.assist_player_name ||
-      (ev.assist && ev.assist.first_name
-        ? `${ev.assist.first_name} ${ev.assist.last_name || ""}`.trim()
-        : null);
+      (ev.assist && ev.assist.first_name ? `${ev.assist.first_name} ${ev.assist.last_name || ""}`.trim() : null);
     return (txt || "").trim() || null;
   };
   const cardEmoji = (ev) => {
@@ -834,27 +787,11 @@ export default function MatchDetail() {
   const timeline = useMemo(() => {
     if (!m) return [];
     const homeId = Number(m.home_club);
-
-    const goals = (m.goals || []).map((g) => ({
-      kind: "goal",
-      minute: g.minute ?? g.time ?? g.min ?? null,
-      club: Number(g.club ?? g.club_id),
-      raw: g,
-      onHomeSide: Number(g.club ?? g.club_id) === homeId,
-    }));
-
-    const cards = (m.cards || []).map((c) => ({
-      kind: "card",
-      minute: c.minute ?? c.time ?? c.min ?? null,
-      club: Number(c.club ?? c.club_id),
-      raw: c,
-      onHomeSide: Number(c.club ?? c.club_id) === homeId,
-    }));
-
+    const goals = (m.goals || []).map((g) => ({ kind: "goal", minute: g.minute ?? g.time ?? g.min ?? null, club: Number(g.club ?? g.club_id), raw: g, onHomeSide: Number(g.club ?? g.club_id) === homeId }));
+    const cards = (m.cards || []).map((c) => ({ kind: "card", minute: c.minute ?? c.time ?? c.min ?? null, club: Number(c.club ?? c.club_id), raw: c, onHomeSide: Number(c.club ?? c.club_id) === homeId }));
     return [...goals, ...cards].sort((a, b) => (a.minute ?? 0) - (b.minute ?? 0));
   }, [m]);
 
-  // Stats d’événements pour overlay sur la compo
   const eventStats = useMemo(() => buildEventStats(m || {}), [m]);
 
   if (loading) return <p>Chargement…</p>;
@@ -862,244 +799,220 @@ export default function MatchDetail() {
   if (!m) return <p>Match introuvable.</p>;
 
   return (
-    <section className="max-w-3xl mx-auto space-y-6">
-      {/* En-tête */}
-      <div className="relative bg-white rounded-2xl shadow-sm ring-1 ring-gray-100 p-4">
-        <div className={`absolute right-3 top-3 z-[10] text-xs px-2 py-1 rounded-full ${statusClasses(status)} pointer-events-none`}>
-          {isLive && <span className="mr-1 inline-block w-2 h-2 bg-red-500 rounded-full animate-pulse" />}
-          {status}{minuteLabel ? ` • ${minuteLabel}` : ""}
-        </div>
-
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <Logo src={m.home_club_logo} alt={m.home_club_name} />
-            <span className="font-semibold whitespace-normal break-words">{m.home_club_name}</span>
+    <div className="mx-auto max-w-[480px] px-3 pb-[calc(20px+env(safe-area-inset-bottom))]">
+      <section className="space-y-6">
+        {/* En-tête */}
+        <div className="relative bg-white rounded-2xl shadow-sm ring-1 ring-gray-100 p-4">
+          <div className={`absolute right-3 top-3 z-[10] text-xs px-2 py-1 rounded-full ${statusClasses(status)} pointer-events-none`}>
+            {isLive && <span className="mr-1 inline-block w-2 h-2 bg-red-500 rounded-full animate-pulse" />}
+            {statusLabel(status)}{minuteLabel ? ` • ${minuteLabel}` : ""}
           </div>
 
-          <div className="text-center">
-            <div className="text-3xl font-extrabold leading-none">
-              {isScheduled ? "vs" : (<>{m.home_score}<span className="text-gray-400"> - </span>{m.away_score}</>)}
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <Logo src={m.home_club_logo} alt={m.home_club_name} />
+              <span className="font-semibold text-[15px] leading-tight max-w-[7.5rem] sm:max-w-none break-words">
+                {m.home_club_name}
+              </span>
             </div>
-            <div className="text-xs text-gray-500 mt-1">
-              {fmtDate(m.datetime)}{m.venue ? ` • ${m.venue}` : ""}
+
+            <div className="text-center">
+              <div className="text-3xl font-extrabold leading-none">
+                {isScheduled ? "vs" : (<>{m.home_score}<span className="text-gray-400"> - </span>{m.away_score}</>)}
+              </div>
+              <div className="text-xs text-gray-500 mt-1">
+                {fmtDate(m.datetime)}{m.venue ? ` • ${m.venue}` : ""}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 justify-end min-w-0">
+              <span className="font-semibold text-[15px] leading-tight text-right max-w-[7.5rem] sm:max-w-none break-words">
+                {m.away_club_name}
+              </span>
+              <Logo src={m.away_club_logo} alt={m.away_club_name} />
             </div>
           </div>
+        </div>
 
-          <div className="flex items-center gap-3 justify-end min-w-0">
-            <span className="font-semibold whitespace-normal break-words text-right">{m.away_club_name}</span>
-            <Logo src={m.away_club_logo} alt={m.away_club_name} />
+        {/* Onglets sticky */}
+        <div className="sticky top-[calc(env(safe-area-inset-top)+0px)] z-[60] isolate bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+          <div className="px-0">
+            <div className="flex gap-6 border-b pointer-events-auto">
+              {[
+                { key: "events", label: "ÉVÉNEMENTS" },
+                { key: "compos", label: "COMPOS" },
+              ].map(({ key, label }) => {
+                const isActive = tab === key;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => onClickTab(key)}
+                    className={`relative -mb-px py-3 text-sm font-semibold tracking-wide transition
+                      ${isActive ? "text-emerald-700" : "text-gray-600 hover:text-gray-900"}`}
+                  >
+                    {label}
+                    <span className={`absolute left-0 -bottom-[1px] h-[2px] w-full ${isActive ? "bg-emerald-600" : "bg-transparent"}`} />
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Onglets */}
-      <div className="sticky top-0 z-[60] isolate bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60">
-        <div className="max-w-3xl mx-auto px-4">
-          <div className="flex gap-6 border-b pointer-events-auto">
-            {[
-              { key: "events", label: "ÉVÉNEMENTS" },
-              { key: "compos", label: "COMPOS" },
-            ].map(({ key, label }) => {
-              const isActive = tab === key;
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => onClickTab(key)}
-                  className={`relative -mb-px py-3 text-sm font-semibold tracking-wide transition
-                    ${isActive ? "text-emerald-700" : "text-gray-600 hover:text-gray-900"}`}
-                >
-                  {label}
-                  <span className={`absolute left-0 -bottom-[1px] h-[2px] w-full ${isActive ? "bg-emerald-600" : "bg-transparent"}`} />
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </div>
+        {/* Contenu */}
+        {tab === "events" ? (
+          <section aria-labelledby="events-panel">
+            <div className="bg-white rounded-2xl shadow-sm ring-1 ring-gray-100 p-4">
+              <h2 id="events-panel" className="text-lg font-semibold mb-3">Événements</h2>
+              {!timeline.length && <p className="text-gray-500">Aucun événement pour le moment.</p>}
+              <div className="divide-y">
+                {timeline.map((ev, idx) => {
+                  const min = ev.minute ?? "?";
 
-      {/* Contenu */}
-      {tab === "events" ? (
-        <section aria-labelledby="events-panel">
-          <div className="bg-white rounded-2xl shadow-sm ring-1 ring-gray-100 p-4">
-            <h2 id="events-panel" className="text-lg font-semibold mb-3">Événements</h2>
-            {!timeline.length && <p className="text-gray-500">Aucun événement pour le moment.</p>}
-            <div className="divide-y">
-              {timeline.map((ev, idx) => {
-                const min = ev.minute ?? "?";
+                  if (ev.kind === "goal") {
+                    const g = ev.raw;
+                    const pFull  = playerLabelEv(g);
+                    const pShort = g.player_short_name || pFull;
+                    const aFull  = assistLabel(g);
+                    const aShort = g.assist_short_name || aFull;
+                    const pPhoto = playerPhoto(g);
+                    const pId    = getEventPlayerId(g);
 
-                if (ev.kind === "goal") {
-                  const g = ev.raw;
-                  const pFull  = playerLabelEv(g);
-                  const pShort = g.player_short_name || pFull;
-                  const aFull  = assistLabel(g);
-                  const aShort = g.assist_short_name || aFull;
-                  const pPhoto = playerPhoto(g);
-                  const pId    = getEventPlayerId(g);
+                    return (
+                      <Row
+                        key={`g-${idx}-${min}`}
+                        left={
+                          ev.onHomeSide ? (
+                            <>
+                              <span className="text-sm text-gray-500">{min}'</span>
+                              <TinyAvatar src={pPhoto} alt={pFull} size={32} onClick={pId ? () => openSheet(pId) : undefined} />
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className="font-medium truncate" title={pFull}>{pShort}{goalTag(g)}</span>
+                                  <BallIcon />
+                                </div>
+                                {aFull && (
+                                  <div className="flex items-center gap-1 text-xs text-gray-500 mt-0.5 min-w-0" title={aFull}>
+                                    <span className="truncate">{aShort}</span>
+                                    <AssistIconImg />
+                                  </div>
+                                )}
+                              </div>
+                            </>
+                          ) : null
+                        }
+                        center={<span>But</span>}
+                        right={
+                          !ev.onHomeSide ? (
+                            <>
+                              <span className="text-sm text-gray-500">{min}'</span>
+                              <TinyAvatar src={pPhoto} alt={pFull} size={32} onClick={pId ? () => openSheet(pId) : undefined} />
+                              <div className="min-w-0 text-right">
+                                <div className="flex items-center gap-2 justify-end min-w-0">
+                                  <span className="font-medium truncate" title={pFull}>{pShort}{goalTag(g)}</span>
+                                  <BallIcon />
+                                </div>
+                                {aFull && (
+                                  <div className="flex items-center gap-1 justify-end text-xs text-gray-500 mt-0.5 min-w-0" title={aFull}>
+                                    <span className="truncate">{aShort}</span>
+                                    <AssistIconImg />
+                                  </div>
+                                )}
+                              </div>
+                            </>
+                          ) : null
+                        }
+                      />
+                    );
+                  }
+
+                  // CARTON
+                  const c = ev.raw;
+                  const emoji  = cardEmoji(c);
+                  const pFull  = c.player_name || "Inconnu";
+                  const pShort = c.card_player_short_name || pFull;
+                  const cPhoto = c.player_photo || null;
+                  const pId    = getEventPlayerId(c);
 
                   return (
                     <Row
-                      key={`g-${idx}-${min}`}
+                      key={`c-${idx}-${min}`}
                       left={
                         ev.onHomeSide ? (
                           <>
                             <span className="text-sm text-gray-500">{min}'</span>
-                            <TinyAvatar
-                              src={pPhoto}
-                              alt={pFull}
-                              size={32}
-                              onClick={pId ? () => openSheet(pId) : undefined}
-                            />
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-2 min-w-0">
-                                <span className="font-medium truncate" title={pFull}>
-                                  {pShort}{goalTag(g)}
-                                </span>
-                                <BallIcon />
-                              </div>
-                              {aFull && (
-                                <div
-                                  className="flex items-center gap-1 text-xs text-gray-500 mt-0.5 min-w-0"
-                                  title={aFull}
-                                >
-                                  <span className="truncate">{aShort}</span>
-                                  <AssistIconImg />
-                                </div>
-                              )}
-                            </div>
+                            <span className="inline-flex items-center justify-center w-5 h-5 leading-none shrink-0">{emoji}</span>
+                            <TinyAvatar src={cPhoto} alt={pFull} size={32} onClick={pId ? () => openSheet(pId) : undefined} />
+                            <span className="font-medium truncate" title={pFull}>{pShort}</span>
                           </>
                         ) : null
                       }
-                      center={<span>But</span>}
+                      center={<span>{cardLabel(c)}</span>}
                       right={
                         !ev.onHomeSide ? (
                           <>
                             <span className="text-sm text-gray-500">{min}'</span>
-                            <TinyAvatar
-                              src={pPhoto}
-                              alt={pFull}
-                              size={32}
-                              onClick={pId ? () => openSheet(pId) : undefined}
-                            />
-                            <div className="min-w-0 text-right">
-                              <div className="flex items-center gap-2 justify-end min-w-0">
-                                <span className="font-medium truncate" title={pFull}>
-                                  {pShort}{goalTag(g)}
-                                </span>
-                                <BallIcon />
-                              </div>
-                              {aFull && (
-                                <div
-                                  className="flex items-center gap-1 justify-end text-xs text-gray-500 mt-0.5 min-w-0"
-                                  title={aFull}
-                                >
-                                  <span className="truncate">{aShort}</span>
-                                  <AssistIconImg />
-                                </div>
-                              )}
-                            </div>
+                            <span className="inline-flex items-center justify-center w-5 h-5 leading-none shrink-0">{emoji}</span>
+                            <TinyAvatar src={cPhoto} alt={pFull} size={32} onClick={pId ? () => openSheet(pId) : undefined} />
+                            <span className="font-medium truncate text-right" title={pFull}>{pShort}</span>
                           </>
                         ) : null
                       }
                     />
                   );
-                }
-
-                // CARTON
-                const c = ev.raw;
-                const emoji  = cardEmoji(c);
-                const pFull  = c.player_name || "Inconnu";
-                const pShort = c.card_player_short_name || pFull;
-                const cPhoto = c.player_photo || null;
-                const pId    = getEventPlayerId(c);
-
-                return (
-                  <Row
-                    key={`c-${idx}-${min}`}
-                    left={
-                      ev.onHomeSide ? (
-                        <>
-                          <span className="text-sm text-gray-500">{min}'</span>
-                          <span className="inline-flex items-center justify-center w-5 h-5 leading-none shrink-0">{emoji}</span>
-                          <TinyAvatar
-                            src={cPhoto}
-                            alt={pFull}
-                            size={32}
-                            onClick={pId ? () => openSheet(pId) : undefined}
-                          />
-                          <span className="font-medium truncate" title={pFull}>{pShort}</span>
-                        </>
-                      ) : null
-                    }
-                    center={<span>{cardLabel(c)}</span>}
-                    right={
-                      !ev.onHomeSide ? (
-                        <>
-                          <span className="text-sm text-gray-500">{min}'</span>
-                          <span className="inline-flex items-center justify-center w-5 h-5 leading-none shrink-0">{emoji}</span>
-                          <TinyAvatar
-                            src={cPhoto}
-                            alt={pFull}
-                            size={32}
-                            onClick={pId ? () => openSheet(pId) : undefined}
-                          />
-                          <span className="font-medium truncate text-right" title={pFull}>{pShort}</span>
-                        </>
-                      ) : null
-                    }
-                  />
-                );
-              })}
+                })}
+              </div>
             </div>
-          </div>
-        </section>
-      ) : (
-        <section aria-labelledby="compos-panel">
-          <div className="bg-white rounded-2xl shadow-sm ring-1 ring-gray-100 p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h2 id="compos-panel" className="text-lg font-semibold">Compositions</h2>
-              <button
-                type="button"
-                onClick={loadLineupsFresh}
-                className="text-sm px-3 py-1.5 rounded-md border border-gray-200 hover:bg-gray-50"
-                disabled={loadingCompo}
-              >
-                {loadingCompo ? "Chargement..." : "Rafraîchir"}
-              </button>
+          </section>
+        ) : (
+          <section aria-labelledby="compos-panel">
+            <div className="bg-white rounded-2xl shadow-sm ring-1 ring-gray-100 p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h2 id="compos-panel" className="text-lg font-semibold">Compositions</h2>
+                <button
+                  type="button"
+                  onClick={loadLineupsFresh}
+                  className="text-sm px-3 py-1.5 rounded-md border border-gray-200 hover:bg-gray-50"
+                  disabled={loadingCompo}
+                >
+                  {loadingCompo ? "Chargement..." : "Rafraîchir"}
+                </button>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-6">
+                <TeamLineupCard
+                  title={m.home_club_name}
+                  logo={m.home_club_logo}
+                  starters={homeStarters}
+                  subs={homeSubs}
+                  formation={homeFormation}
+                  coachName={homeCoach}
+                  teamAvg={m.avg_rating_home}
+                  motmId={globalMotmId}
+                  evStats={eventStats}
+                />
+                <TeamLineupCard
+                  title={m.away_club_name}
+                  logo={m.away_club_logo}
+                  starters={awayStarters}
+                  subs={awaySubs}
+                  formation={awayFormation}
+                  coachName={awayCoach}
+                  teamAvg={m.avg_rating_away}
+                  motmId={globalMotmId}
+                  evStats={eventStats}
+                />
+              </div>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-6">
-              <TeamLineupCard
-                title={m.home_club_name}
-                logo={m.home_club_logo}
-                starters={homeStarters}
-                subs={homeSubs}
-                formation={homeFormation}
-                coachName={homeCoach}
-                teamAvg={m.avg_rating_home}
-                motmId={globalMotmId}
-                evStats={eventStats}
-              />
-              <TeamLineupCard
-                title={m.away_club_name}
-                logo={m.away_club_logo}
-                starters={awayStarters}
-                subs={awaySubs}
-                formation={awayFormation}
-                coachName={awayCoach}
-                teamAvg={m.avg_rating_away}
-                motmId={globalMotmId}
-                evStats={eventStats}
-              />
+            <div className="flex items-center justify-between mt-6">
+              <Link to={`/`} className="text-blue-600 hover:underline">← Accueil</Link>
+              <button className="text-sm text-gray-600 hover:underline" onClick={() => navigate(-1)}>Retour</button>
             </div>
-          </div>
-
-          <div className="flex items-center justify-between mt-6">
-            <Link to={`/`} className="text-blue-600 hover:underline">← Accueil</Link>
-            <button className="text-sm text-gray-600 hover:underline" onClick={() => navigate(-1)}>Retour</button>
-          </div>
-        </section>
-      )}
-    </section>
+          </section>
+        )}
+      </section>
+    </div>
   );
 }
