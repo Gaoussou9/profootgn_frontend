@@ -736,8 +736,8 @@ export default function MatchDetail() {
   };
   const cardLabel = (ev) => {
     const v = (ev?.color ?? ev?.type ?? ev?.card ?? ev?.card_type ?? "").toString().toUpperCase();
-    if (v === "R" || v.includes("RED") || v.includes("ROUGE")) return "Carton rouge";
-    if (v === "Y" || v.includes("YELLOW") || v.includes("JAUNE")) return "Carton jaune";
+    if (v === "R" || v.includes("RED") || v.includes("ROUGE")) return "";
+    if (v === "Y" || v.includes("YELLOW") || v.includes("JAUNE")) return "";
     return "Carton";
   };
 
@@ -849,7 +849,7 @@ export default function MatchDetail() {
                           {/* Passeur — ligne 2, petit texte */}
                           {aFull && (
                             <div className="flex items-center gap-1 text-[11px] text-gray-500 mt-0.5">
-                              <span>&nbsp;:</span>
+                              <span>&nbsp;</span>
                               <span className="whitespace-normal">{aFull}</span>
                               <AssistIconImg />
                             </div>
