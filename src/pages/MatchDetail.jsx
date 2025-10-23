@@ -27,7 +27,6 @@ const Logo = ({ src, alt, size = "w-12 h-12" }) => (
   />
 );
 
-// Avatar cliquable (timeline)
 const TinyAvatar = ({ src, alt, size = 32, onClick }) => (
   <img
     src={src || "/player-placeholder.png"}
@@ -53,7 +52,6 @@ const playerPhoto = (ev = {}) => {
   return p.photo || ev.player_photo || ev.photo || ev.playerPhoto || null;
 };
 
-// id joueur depuis un évènement
 const getEventPlayerId = (ev = {}) => {
   if (ev.player_id != null) return ev.player_id;
   if (typeof ev.player === "number") return ev.player;
@@ -194,7 +192,7 @@ function formatMinuteForBadge(status, minute, isSecondHalf) {
 
 /* ---------- Row (timeline) ---------- */
 const Row = ({ left, center, right }) => (
-  <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 py-2">
+  <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-3 py-2">
     <div className="flex items-center gap-2 min-w-0">{left}</div>
     <div className="text-center text-sm text-gray-600">{center}</div>
     <div className="flex items-center gap-2 justify-end min-w-0">{right}</div>
@@ -283,7 +281,7 @@ const PlayerChip = ({
   ev = { goals: 0, assists: 0, yellow: 0, red: 0 },
   raw,
 }) => {
-  const { openSheet, openSheetSmart } = usePlayerSheet(); // ✅ une seule fois (pas dans un map)
+  const { openSheet, openSheetSmart } = usePlayerSheet();
   const label = (name && String(name).trim()) || "";
   const showNote = Number.isFinite(Number(note)) && Number(note) > 0 ? Number(note) : null;
 
@@ -295,7 +293,6 @@ const PlayerChip = ({
 
   const hasCards = (ev.yellow || 0) > 0 || (ev.red || 0) > 0;
 
-  // id “deviné” si pas fourni
   const guessedId =
     id ??
     raw?.player_id ??
@@ -304,7 +301,7 @@ const PlayerChip = ({
 
   const onClick = () => {
     if (guessedId) return openSheet(guessedId);
-    const nm = label || bestNameFor(raw || {}); // fallback recherche
+    const nm = label || bestNameFor(raw || {});
     const cId = clubId ?? getClubId(raw || {});
     openSheetSmart({ name: nm, clubId: cId });
   };
@@ -319,53 +316,23 @@ const PlayerChip = ({
           onError={(e)=>{ e.currentTarget.src="/player-placeholder.png"; }}
           onClick={onClick}
         />
-
-        {/* MOTM */}
         {isMotm && (<span className="absolute -top-4 -left-4 text-yellow-400 text-4xl drop-shadow">★</span>)}
-
-        {/* NOTE */}
-        {showNote != null && (
-          <span className={`absolute -top-3 left-1/2 -translate-x-1/2 text-[11px] font-semibold rounded px-1 ${ratingClass}`}>
-            {showNote.toFixed(1)}
-          </span>
-        )}
-
-        {/* BUTS / ASSISTS */}
+        {showNote != null && (<span className={`absolute -top-3 left-1/2 -translate-x-1/2 text-[11px] font-semibold rounded px-1 ${ratingClass}`}>{showNote.toFixed(1)}</span>)}
         {(ev.goals > 0 || ev.assists > 0) && (
           <div className="absolute -top-1 -right-3 flex flex-col items-center gap-0.5">
-            {ev.goals > 0 && (
-              <span className="inline-flex items-center gap-1 text-[11px] font-semibold bg-white/80 rounded px-1 ring-1 ring-gray-200">
-                <BallIcon size={16} />{ev.goals > 1 ? ev.goals : ""}
-              </span>
-            )}
-            {ev.assists > 0 && (
-              <span className="inline-flex items-center gap-1 text-[11px] font-semibold bg-white/80 rounded px-1 ring-1 ring-gray-200">
-                <AssistIconImg size={16} />{ev.assists > 1 ? ev.assists : ""}
-              </span>
-            )}
+            {ev.goals > 0 && (<span className="inline-flex items-center gap-1 text-[11px] font-semibold bg-white/80 rounded px-1 ring-1 ring-gray-200"><BallIcon size={16} />{ev.goals > 1 ? ev.goals : ""}</span>)}
+            {ev.assists > 0 && (<span className="inline-flex items-center gap-1 text-[11px] font-semibold bg-white/80 rounded px-1 ring-1 ring-gray-200"><AssistIconImg size={16} />{ev.assists > 1 ? ev.assists : ""}</span>)}
           </div>
         )}
-
-        {/* CARTONS */}
         {hasCards && (
           <div className="absolute top-1/2 left-0 flex flex-col gap-0.5">
             {Array.from({length: ev.yellow || 0}).map((_,i)=>(<span key={`y-${i}`} className="w-4 h-5 bg-yellow-300 border border-yellow-600 rounded-sm" />))}
             {Array.from({length: ev.red || 0}).map((_,i)=>(<span key={`r-${i}`} className="w-4 h-5 bg-red-500 border border-red-700 rounded-sm" />))}
           </div>
         )}
-
-        {/* CAPITAINE */}
         {isCaptain && (<span className="absolute -bottom-1 -right-1 text-[11px] font-bold bg-sky-600 text-white rounded px-1">C</span>)}
-
-        {/* NUMÉRO */}
-        {Number.isFinite(Number(number)) && (
-          <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 text-[11px] font-bold bg-black/75 text-white rounded px-1">
-            {number}
-          </span>
-        )}
+        {Number.isFinite(Number(number)) && (<span className="absolute -bottom-1 left-1/2 -translate-x-1/2 text-[11px] font-bold bg-black/75 text-white rounded px-1">{number}</span>)}
       </div>
-
-      {/* Nom (2 lignes max sur mobile) */}
       <div className="mt-1 max-w-[120px] px-2 py-0.5 rounded-full bg-black text-white text-[11px] leading-tight overflow-hidden">
         <span className="line-clamp-2">{label}</span>
       </div>
@@ -438,7 +405,7 @@ const TeamLineupCard = ({ title, logo, starters, subs, formation, coachName, tea
     );
   };
 
-  const { openSheet, openSheetSmart } = usePlayerSheet(); // ✅ ici (une seule fois)
+  const { openSheet, openSheetSmart } = usePlayerSheet();
 
   return (
     <div className="border rounded-2xl p-4 bg-white/60">
@@ -499,7 +466,6 @@ const TeamLineupCard = ({ title, logo, starters, subs, formation, coachName, tea
                   </span>
                   <span className="flex-1 truncate">{nm || "—"}</span>
                   <span className="text-[11px] uppercase tracking-wide text-gray-500 mr-2">{p.position || ""}</span>
-
                   {(ev.goals > 0 || ev.assists > 0) && (
                     <span className="inline-flex items-center gap-1 mr-2 text-[11px]">
                       {ev.goals > 0 && (<><BallIcon size={14} />{ev.goals > 1 ? ev.goals : ""}</>)}
@@ -512,7 +478,6 @@ const TeamLineupCard = ({ title, logo, starters, subs, formation, coachName, tea
                       {Array.from({length: ev.red}).map((_,k)=><span key={`rb-${k}`} className="w-2.5 h-3.5 bg-red-500 border border-red-700 rounded-sm" />)}
                     </span>
                   )}
-
                   {rating != null && (<span className={`text-[11px] font-semibold rounded px-1 ${ratingClass}`}>{rating.toFixed(1)}</span>)}
                 </li>
               );
@@ -524,7 +489,7 @@ const TeamLineupCard = ({ title, logo, starters, subs, formation, coachName, tea
   );
 };
 
-/* ===== Normalisation réponses /lineups ===== */
+/* ===== Normalisation / derive ===== */
 const normalizeLineupsResponse = (raw) => {
   if (!raw) return [];
   if (Array.isArray(raw)) return raw;
@@ -534,7 +499,6 @@ const normalizeLineupsResponse = (raw) => {
   return [];
 };
 
-/* ===== Fallback admin rapide ===== */
 const normalizeQuickAdminToFlat = (quick, matchId) => {
   if (!quick || typeof quick !== "object") return [];
   const { home, away } = quick;
@@ -560,7 +524,6 @@ const normalizeQuickAdminToFlat = (quick, matchId) => {
   ];
 };
 
-/* ===== Fallback depuis le détail match ===== */
 const toName  = (p={}) => p.player_name || p.name || [p.first_name, p.last_name].filter(Boolean).join(" ").trim();
 const toNum   = (p={}) => p.number ?? p.shirt_number ?? p.jersey_number ?? p.no ?? null;
 const toPos   = (p={}) => p.position || p.pos || p.role || "";
@@ -605,11 +568,11 @@ function deriveLineupsFromMatch(m) {
   return { items, meta };
 }
 
-/* ===================== Page MatchDetail ===================== */
+/* ===================== Page ===================== */
 export default function MatchDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { openSheet } = usePlayerSheet(); // pour la timeline
+  const { openSheet } = usePlayerSheet();
 
   const [m, setM] = useState(null);
   const [loading, setLoad] = useState(true);
@@ -627,7 +590,6 @@ export default function MatchDetail() {
     away: { formation: null, coach_name: null },
   });
 
-  // match + lineups init
   useEffect(() => {
     setLoad(true);
     api.get(`matches/${id}/`)
@@ -640,7 +602,6 @@ export default function MatchDetail() {
       .finally(() => setLoad(false));
   }, [id]);
 
-  // derive + team info
   useEffect(() => {
     if (!m) return;
     const d = deriveLineupsFromMatch(m);
@@ -668,7 +629,6 @@ export default function MatchDetail() {
   const { minute, isSecondHalf } = useLiveClock(m?.id, status, m?.minute);
   const minuteLabel = formatMinuteForBadge(status, minute, isSecondHalf);
 
-  // refresh live
   useEffect(() => {
     if (!isLiveLike) return;
     const t = setInterval(() => {
@@ -686,7 +646,6 @@ export default function MatchDetail() {
     try {
       const res = await api.get(`matches/${id}/lineups/`);
       let items = normalizeLineupsResponse(res.data);
-
       if (!items.length) {
         const alt = await api.get(`matches/admin/lineups/api/`, { params: { action: "list", match_id: id } });
         items = normalizeQuickAdminToFlat(alt.data, id);
@@ -718,13 +677,11 @@ export default function MatchDetail() {
     window.scrollTo({ top: y < 0 ? 0 : y, behavior: "smooth" });
   };
 
-  // séparation fiable home/away + starters/subs
   const homeStarters = (lineups || []).filter(p => clubEq(p, m?.home_club) && isStarting(p));
   const homeSubs     = (lineups || []).filter(p => clubEq(p, m?.home_club) && !isStarting(p));
   const awayStarters = (lineups || []).filter(p => clubEq(p, m?.away_club) && isStarting(p));
   const awaySubs     = (lineups || []).filter(p => clubEq(p, m?.away_club) && !isStarting(p));
 
-  // Homme du match (meilleure note parmi les titulaires)
   const globalMotmId = useMemo(() => {
     const starters = [...homeStarters, ...awayStarters];
     let best = null, bestVal = -1;
@@ -745,7 +702,7 @@ export default function MatchDetail() {
   const awayCoach =
     teamInfo.away.coach_name || derived.meta.awayCoach || m?.away_coach_name || m?.away_coach;
 
-  /* ---------- Timeline (évènements) ---------- */
+  /* ---------- Helpers timeline ---------- */
   const _truthy = (v) =>
     v === true || v === 1 || v === "1" ||
     (typeof v === "string" && ["true","yes","y"].includes(v.toLowerCase()));
@@ -873,56 +830,62 @@ export default function MatchDetail() {
                   if (ev.kind === "goal") {
                     const g = ev.raw;
                     const pFull  = playerLabelEv(g);
-                    const pShort = g.player_short_name || pFull;
                     const aFull  = assistLabel(g);
-                    const aShort = g.assist_short_name || aFull;
                     const pPhoto = playerPhoto(g);
                     const pId    = getEventPlayerId(g);
+
+                    const LeftBlock = (
+                      <>
+                        <span className="text-sm text-gray-500">{min}'</span>
+                        <TinyAvatar src={pPhoto} alt={pFull} size={32} onClick={pId ? () => openSheet(pId) : undefined} />
+                        <div className="min-w-0 leading-tight">
+                          {/* Buteur — nom complet (petit sur mobile) */}
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="font-medium text-[13px] sm:text-base whitespace-normal">
+                              {pFull}{goalTag(g)}
+                            </span>
+                            <BallIcon />
+                          </div>
+                          {/* Passeur — ligne 2, petit texte */}
+                          {aFull && (
+                            <div className="flex items-center gap-1 text-[11px] text-gray-500 mt-0.5">
+                              <span>Passe&nbsp;:</span>
+                              <span className="whitespace-normal">{aFull}</span>
+                              <AssistIconImg />
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    );
+
+                    const RightBlock = (
+                      <>
+                        <span className="text-sm text-gray-500">{min}'</span>
+                        <TinyAvatar src={pPhoto} alt={pFull} size={32} onClick={pId ? () => openSheet(pId) : undefined} />
+                        <div className="min-w-0 leading-tight text-right">
+                          <div className="flex items-center gap-2 justify-end min-w-0">
+                            <span className="font-medium text-[13px] sm:text-base whitespace-normal">
+                              {pFull}{goalTag(g)}
+                            </span>
+                            <BallIcon />
+                          </div>
+                          {aFull && (
+                            <div className="flex items-center gap-1 justify-end text-[11px] text-gray-500 mt-0.5">
+                              <span>Passe&nbsp;:</span>
+                              <span className="whitespace-normal">{aFull}</span>
+                              <AssistIconImg />
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    );
 
                     return (
                       <Row
                         key={`g-${idx}-${min}`}
-                        left={
-                          ev.onHomeSide ? (
-                            <>
-                              <span className="text-sm text-gray-500">{min}'</span>
-                              <TinyAvatar src={pPhoto} alt={pFull} size={32} onClick={pId ? () => openSheet(pId) : undefined} />
-                              <div className="min-w-0">
-                                <div className="flex items-center gap-2 min-w-0">
-                                  <span className="font-medium truncate" title={pFull}>{pShort}{goalTag(g)}</span>
-                                  <BallIcon />
-                                </div>
-                                {aFull && (
-                                  <div className="flex items-center gap-1 text-xs text-gray-500 mt-0.5 min-w-0" title={aFull}>
-                                    <span className="truncate">{aShort}</span>
-                                    <AssistIconImg />
-                                  </div>
-                                )}
-                              </div>
-                            </>
-                          ) : null
-                        }
+                        left={ev.onHomeSide ? LeftBlock : null}
                         center={<span>But</span>}
-                        right={
-                          !ev.onHomeSide ? (
-                            <>
-                              <span className="text-sm text-gray-500">{min}'</span>
-                              <TinyAvatar src={pPhoto} alt={pFull} size={32} onClick={pId ? () => openSheet(pId) : undefined} />
-                              <div className="min-w-0 text-right">
-                                <div className="flex items-center gap-2 justify-end min-w-0">
-                                  <span className="font-medium truncate" title={pFull}>{pShort}{goalTag(g)}</span>
-                                  <BallIcon />
-                                </div>
-                                {aFull && (
-                                  <div className="flex items-center gap-1 justify-end text-xs text-gray-500 mt-0.5 min-w-0" title={aFull}>
-                                    <span className="truncate">{aShort}</span>
-                                    <AssistIconImg />
-                                  </div>
-                                )}
-                              </div>
-                            </>
-                          ) : null
-                        }
+                        right={!ev.onHomeSide ? RightBlock : null}
                       />
                     );
                   }
@@ -931,34 +894,39 @@ export default function MatchDetail() {
                   const c = ev.raw;
                   const emoji  = cardEmoji(c);
                   const pFull  = c.player_name || "Inconnu";
-                  const pShort = c.card_player_short_name || pFull;
                   const cPhoto = c.player_photo || null;
                   const pId    = getEventPlayerId(c);
+
+                  const CardLeft = (
+                    <>
+                      <span className="text-sm text-gray-500">{min}'</span>
+                      <span className="inline-flex items-center justify-center w-5 h-5 leading-none shrink-0">{emoji}</span>
+                      <TinyAvatar src={cPhoto} alt={pFull} size={32} onClick={pId ? () => openSheet(pId) : undefined} />
+                      <div className="min-w-0 leading-tight">
+                        <div className="font-medium text-[13px] sm:text-base">{cardLabel(c)}</div>
+                        <div className="text-[11px] text-gray-600">{pFull}</div>
+                      </div>
+                    </>
+                  );
+
+                  const CardRight = (
+                    <>
+                      <span className="text-sm text-gray-500">{min}'</span>
+                      <span className="inline-flex items-center justify-center w-5 h-5 leading-none shrink-0">{emoji}</span>
+                      <TinyAvatar src={cPhoto} alt={pFull} size={32} onClick={pId ? () => openSheet(pId) : undefined} />
+                      <div className="min-w-0 leading-tight text-right">
+                        <div className="font-medium text-[13px] sm:text-base">{cardLabel(c)}</div>
+                        <div className="text-[11px] text-gray-600">{pFull}</div>
+                      </div>
+                    </>
+                  );
 
                   return (
                     <Row
                       key={`c-${idx}-${min}`}
-                      left={
-                        ev.onHomeSide ? (
-                          <>
-                            <span className="text-sm text-gray-500">{min}'</span>
-                            <span className="inline-flex items-center justify-center w-5 h-5 leading-none shrink-0">{emoji}</span>
-                            <TinyAvatar src={cPhoto} alt={pFull} size={32} onClick={pId ? () => openSheet(pId) : undefined} />
-                            <span className="font-medium truncate" title={pFull}>{pShort}</span>
-                          </>
-                        ) : null
-                      }
-                      center={<span>{cardLabel(c)}</span>}
-                      right={
-                        !ev.onHomeSide ? (
-                          <>
-                            <span className="text-sm text-gray-500">{min}'</span>
-                            <span className="inline-flex items-center justify-center w-5 h-5 leading-none shrink-0">{emoji}</span>
-                            <TinyAvatar src={cPhoto} alt={pFull} size={32} onClick={pId ? () => openSheet(pId) : undefined} />
-                            <span className="font-medium truncate text-right" title={pFull}>{pShort}</span>
-                          </>
-                        ) : null
-                      }
+                      left={ev.onHomeSide ? CardLeft : null}
+                      center={<span>Carton</span>}
+                      right={!ev.onHomeSide ? CardRight : null}
                     />
                   );
                 })}
