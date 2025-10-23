@@ -884,7 +884,7 @@ export default function MatchDetail() {
                       <Row
                         key={`g-${idx}-${min}`}
                         left={ev.onHomeSide ? LeftBlock : null}
-                        center={<span>But</span>}
+                        center={<span></span>}
                         right={!ev.onHomeSide ? RightBlock : null}
                       />
                     );
@@ -925,7 +925,6 @@ export default function MatchDetail() {
                     <Row
                       key={`c-${idx}-${min}`}
                       left={ev.onHomeSide ? CardLeft : null}
-                      center={<span>Carton</span>}
                       right={!ev.onHomeSide ? CardRight : null}
                     />
                   );
