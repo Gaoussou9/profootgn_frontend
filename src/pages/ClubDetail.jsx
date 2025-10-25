@@ -6,7 +6,7 @@ import { usePlayerSheet } from "../components/PlayerSheet"; // ✅ fiche joueur
 import { useStaffSheet } from "../components/StaffSheet";   // ✅ fiche staff
 
 /* ---------- Réglage taille icônes de l’entête ---------- */
-const ICON_SIZE = 50; // <- ajuste ici pour matcher visuellement ⚽/🟨/🟥
+const ICON_SIZE = 50;
 
 /* ---------- UI helpers ---------- */
 const ClubLogo = ({ src, alt }) => (
@@ -50,7 +50,6 @@ const AssistIcon = ({ size = ICON_SIZE }) => (
     height={size}
     className="inline-block align-middle object-contain"
     onError={(e) => {
-      // fallback si l'image n'existe pas
       e.currentTarget.outerHTML = "👟";
     }}
   />
@@ -66,7 +65,7 @@ const HeaderIcon = ({ children }) => (
   </span>
 );
 
-/* ---------- Mapping postes -> groupe ---------- */
+/* ---------- Helpers stat / poste ---------- */
 function normalizePos(val) {
   return String(val || "").trim().toUpperCase();
 }
@@ -79,7 +78,6 @@ function positionCategory(p) {
   return "Autres";
 }
 
-/* ---------- util ---------- */
 const stat = (obj, keys) => {
   for (const k of keys) {
     const v = obj?.[k];
@@ -87,6 +85,33 @@ const stat = (obj, keys) => {
   }
   return "0";
 };
+
+/* ---------- assist extraction (recyclé de AssistsLeaders) ---------- */
+function pickAssistIdentityFromGoal(g) {
+  const id =
+    g.assist_player ??
+    g.assist_player_id ??
+    g.assist?.id ??
+    null;
+
+  const name =
+    g.assist_name ||
+    g.assist_player_name ||
+    g.assist?.name ||
+    [g.assist?.first_name, g.assist?.last_name]
+      .filter(Boolean)
+      .join(" ")
+      .trim() ||
+    "";
+
+  if (!id && !name) return null;
+
+  return {
+    playerId: id ?? null,
+    playerName: name || "Inconnu",
+    // on ne retourne pas le club ici, on va l'extraire à part
+  };
+}
 
 /* ================================================================== */
 
@@ -99,14 +124,15 @@ export default function ClubDetail() {
   const [players, setPlayers] = useState([]);
   const [staff, setStaff] = useState([]);
 
-  // agrégats (⚽/assist/cartons) par joueur renvoyés par l’API
-  // totals[playerId] = { goals, assists, yellows, reds }
+  // totals[playerId] = { goals, assists, yellows, reds } à partir de /players-stats
   const [totals, setTotals] = useState({});
+  // assistTotals[playerId] = nombre de passes décisives recalculé depuis /goals/
+  const [assistTotals, setAssistTotals] = useState({});
 
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState(null);
 
-  // Charge club + effectif + staff (une seule fois au mount + quand id change)
+  /* ---------- Charge club + joueurs + staff ---------- */
   useEffect(() => {
     let stop = false;
 
@@ -128,7 +154,7 @@ export default function ClubDetail() {
           if (!stop) setPlayers([]);
         }
 
-        // Staff (actifs)
+        // Staff
         try {
           const r = await api.get(`staff/?club=${id}&active=1&ordering=full_name`);
           const sArr = Array.isArray(r.data) ? r.data : r.data?.results || [];
@@ -149,22 +175,13 @@ export default function ClubDetail() {
     };
   }, [id]);
 
-  // Charge/rafraîchit les totaux (⚽/👟/🟨/🟥) depuis l’API d’agrégats
-  // et rafraîchit toutes les 12s + quand l'onglet redevient visible
+  /* ---------- Charge les totaux club (buts, cartons, etc.) ---------- */
   useEffect(() => {
     let stop = false;
     let timer;
 
     const fetchTotals = async () => {
       try {
-        // Exemple de réponse attendue :
-        // {
-        //   club: {...},
-        //   players: [
-        //     { id: 12, goals: 3, assists: 1, yc: 2, rc: 0, ... },
-        //     ...
-        //   ]
-        // }
         const r = await api.get(`clubs/${id}/players-stats/?include_live=1`);
         const arr = Array.isArray(r.data?.players) ? r.data.players : [];
 
@@ -209,8 +226,8 @@ export default function ClubDetail() {
       }
     };
 
-    fetchTotals(); // premier chargement
-    timer = setInterval(fetchTotals, 12000); // rafraîchit toutes les 12s
+    fetchTotals();
+    timer = setInterval(fetchTotals, 12000);
 
     const onVis = () => {
       if (document.visibilityState === "visible") fetchTotals();
@@ -224,10 +241,70 @@ export default function ClubDetail() {
     };
   }, [id]);
 
-  const playerName = (p) =>
-    p?.name || [p?.first_name, p?.last_name].filter(Boolean).join(" ") || "—";
+  /* ---------- Recalcule les passes décisives depuis /goals/ ---------- */
+  useEffect(() => {
+    let stop = false;
 
-  /* ---------- Groupes de joueurs + tri ---------- */
+    async function loadAssistsFromGoals() {
+      try {
+        // On récupère tous les buts comme dans AssistsLeaders
+        const r = await api.get("goals/", { params: { page_size: 5000 } });
+        const rawGoals = Array.isArray(r.data?.results)
+          ? r.data.results
+          : Array.isArray(r.data)
+          ? r.data
+          : [];
+
+        const counts = {}; // { playerId: totalAssists }
+
+        for (const g of rawGoals) {
+          // identifie le club du passeur (mêmes champs que AssistsLeaders.jsx)
+          const assistClubId =
+            g.assist_club ??
+            g.assist?.club ??
+            g.club ??
+            g.club_id ??
+            null;
+
+          // on ne garde que les passes des joueurs de CE club
+          if (
+            assistClubId == null ||
+            String(assistClubId) !== String(id)
+          ) {
+            continue;
+          }
+
+          // récupère l'identité
+          const a = pickAssistIdentityFromGoal(g);
+          if (!a) continue;
+          if (a.playerId == null) continue; // pas d'id clair => on ne peut pas rattacher au joueur du tableau ClubDetail
+
+          counts[a.playerId] = (counts[a.playerId] || 0) + 1;
+        }
+
+        if (!stop) {
+          setAssistTotals(counts);
+        }
+      } catch (e) {
+        if (!stop) {
+          setAssistTotals({});
+        }
+      }
+    }
+
+    loadAssistsFromGoals();
+    return () => {
+      stop = true;
+    };
+  }, [id]);
+
+  /* ---------- Utils locaux ---------- */
+  const playerName = (p) =>
+    p?.name ||
+    [p?.first_name, p?.last_name].filter(Boolean).join(" ") ||
+    "—";
+
+  // regroupe les joueurs par ligne (Gardiens / Défenseurs / Milieux / Attaquants / Autres)
   const grouped = useMemo(() => {
     const buckets = {
       Gardiens: [],
@@ -254,7 +331,7 @@ export default function ClubDetail() {
   if (err) return <p className="text-red-600">Erreur : {err}</p>;
   if (!club) return <p>Club introuvable.</p>;
 
-  /* ---------- TABLEAU JOUEURS (toujours affiché) ---------- */
+  /* ---------- TABLEAU JOUEURS ---------- */
   const SectionTable = ({ title, list }) =>
     list.length > 0 && (
       <div className="rounded-2xl ring-1 ring-black/10 overflow-hidden bg-white">
@@ -263,7 +340,7 @@ export default function ClubDetail() {
           {title.toUpperCase()}
         </div>
 
-        {/* wrapper scroll horizontal si l'écran est étroit */}
+        {/* scroll horizontal si écran étroit */}
         <div className="overflow-x-auto">
           <table className="w-full text-sm min-w-[650px]">
             <thead className="bg-gray-50">
@@ -288,20 +365,30 @@ export default function ClubDetail() {
                   </HeaderIcon>
                 </th>
                 <th className="w-12 py-2 px-3 text-center">
-                  <HeaderIcon>
-                    <span className="text-[22px] leading-none">🟥</span>
-                  </HeaderIcon>
+                    <HeaderIcon>
+                      <span className="text-[22px] leading-none">🟥</span>
+                    </HeaderIcon>
                 </th>
               </tr>
             </thead>
             <tbody>
               {list.map((p, idx) => {
                 const t = totals[p.id] || {};
-                const goals = t.goals ?? stat(p, ["goals", "g", "buts"]);
+
+                // passes décisives calculées (vraie vérité)
+                const assistFromGoals = assistTotals[p.id];
+
+                const goals =
+                  t.goals ?? stat(p, ["goals", "g", "buts"]);
+
                 const assists =
-                  t.assists ?? stat(p, ["assists", "assist", "a", "passes_decisives"]);
+                  assistFromGoals ??
+                  t.assists ??
+                  stat(p, ["assists", "assist", "a", "passes_decisives"]);
+
                 const yc =
                   t.yellows ?? stat(p, ["yellow_cards", "yc", "cartons_jaunes"]);
+
                 const rc =
                   t.reds ?? stat(p, ["red_cards", "rc", "cartons_rouges"]);
 
@@ -335,10 +422,14 @@ export default function ClubDetail() {
                       {goals}
                     </td>
                     <td className="py-2 px-3 text-center tabular-nums">
-                      {assists}
+                      {assists ?? 0}
                     </td>
-                    <td className="py-2 px-3 text-center tabular-nums">{yc}</td>
-                    <td className="py-2 px-3 text-center tabular-nums">{rc}</td>
+                    <td className="py-2 px-3 text-center tabular-nums">
+                      {yc}
+                    </td>
+                    <td className="py-2 px-3 text-center tabular-nums">
+                      {rc}
+                    </td>
                   </tr>
                 );
               })}
@@ -348,7 +439,7 @@ export default function ClubDetail() {
       </div>
     );
 
-  /* ---------- TABLEAU STAFF (toujours affiché) ---------- */
+  /* ---------- TABLEAU STAFF ---------- */
   function StaffTable() {
     if (!Array.isArray(staff) || staff.length === 0) return null;
     return (
@@ -501,14 +592,14 @@ export default function ClubDetail() {
         )}
       </div>
 
-      {/* EFFECTIF PAR POSTES : tableaux (toujours affichés) */}
+      {/* EFFECTIF PAR POSTES */}
       <SectionTable title="Gardiens" list={grouped.Gardiens} />
       <SectionTable title="Défenseurs" list={grouped.Défenseurs} />
       <SectionTable title="Milieux" list={grouped.Milieux} />
       <SectionTable title="Attaquants" list={grouped.Attaquants} />
       <SectionTable title="Autres" list={grouped.Autres} />
 
-      {/* STAFF : tableau (toujours affiché) */}
+      {/* STAFF */}
       <StaffTable />
     </section>
   );
