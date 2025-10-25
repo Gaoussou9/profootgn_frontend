@@ -82,7 +82,7 @@ const stat = (obj, keys) => {
   for (const k of keys) {
     const v = obj?.[k];
     if (v !== undefined && v !== null && v !== "") return v;
-  }
+    }
   return "0";
 };
 
@@ -109,7 +109,6 @@ function pickAssistIdentityFromGoal(g) {
   return {
     playerId: id ?? null,
     playerName: name || "Inconnu",
-    // on ne retourne pas le club ici, on va l'extraire à part
   };
 }
 
@@ -147,16 +146,26 @@ export default function ClubDetail() {
 
         // Joueurs
         try {
-          const r = await api.get(`players/?club=${id}&ordering=number`);
+          // essaie de filtrer les joueurs actifs si l'API le supporte
+          const r = await api.get(`players/?club=${id}&active=1&ordering=number`);
           const arr = Array.isArray(r.data) ? r.data : r.data?.results || [];
           if (!stop && Array.isArray(arr)) setPlayers(arr);
         } catch {
-          if (!stop) setPlayers([]);
+          // fallback sans active=1 si jamais l'API ne le supporte pas
+          try {
+            const r2 = await api.get(`players/?club=${id}&ordering=number`);
+            const arr2 = Array.isArray(r2.data) ? r2.data : r2.data?.results || [];
+            if (!stop && Array.isArray(arr2)) setPlayers(arr2);
+          } catch {
+            if (!stop) setPlayers([]);
+          }
         }
 
         // Staff
         try {
-          const r = await api.get(`staff/?club=${id}&active=1&ordering=full_name`);
+          const r = await api.get(
+            `staff/?club=${id}&active=1&ordering=full_name`
+          );
           const sArr = Array.isArray(r.data) ? r.data : r.data?.results || [];
           if (!stop) setStaff(Array.isArray(sArr) ? sArr : []);
         } catch {
@@ -243,99 +252,118 @@ export default function ClubDetail() {
 
   /* ---------- Recalcule les passes décisives depuis /goals/ ---------- */
   useEffect(() => {
-  let stop = false;
+    let stop = false;
 
-  async function loadAssistsFromGoals() {
-    try {
-      // On récupère tous les buts comme dans AssistsLeaders
-      const r = await api.get("goals/", { params: { page_size: 5000 } });
-      const rawGoals = Array.isArray(r.data?.results)
-        ? r.data.results
-        : Array.isArray(r.data)
-        ? r.data
-        : [];
+    async function loadAssistsFromGoals() {
+      try {
+        const r = await api.get("goals/", { params: { page_size: 5000 } });
+        const rawGoals = Array.isArray(r.data?.results)
+          ? r.data.results
+          : Array.isArray(r.data)
+          ? r.data
+          : [];
 
-      const counts = {}; // { playerId: totalAssists }
+        const counts = {}; // { playerId: totalAssists }
 
-      for (const g of rawGoals) {
-        // club du passeur
-        const assistClubId =
-          g.assist_club ??
-          g.assist?.club ??
-          g.club ??
-          g.club_id ??
-          null;
+        for (const g of rawGoals) {
+          // club du passeur
+          const assistClubId =
+            g.assist_club ??
+            g.assist?.club ??
+            g.club ??
+            g.club_id ??
+            null;
 
-        // club du buteur (fallback si assist_club est manquant)
-        const goalClubId =
-          g.club_id ??
-          g.club ??
-          g.club_scored_for ??
-          g.home_club ??
-          g.away_club ??
-          null;
+          // club du buteur (fallback si assist_club est manquant)
+          const goalClubId =
+            g.club_id ??
+            g.club ??
+            g.club_scored_for ??
+            g.home_club ??
+            g.away_club ??
+            null;
 
-        // garder uniquement les passes qu'on peut associer à CE club
-        const isSameClubByAssist =
-          assistClubId != null &&
-          String(assistClubId) === String(id);
+          // garder uniquement les passes qu'on peut associer à CE club
+          const isSameClubByAssist =
+            assistClubId != null &&
+            String(assistClubId) === String(id);
 
-        const isSameClubByGoalButFallback =
-          (!assistClubId || assistClubId == null) &&
-          goalClubId != null &&
-          String(goalClubId) === String(id);
+          const isSameClubByGoalButFallback =
+            (!assistClubId || assistClubId == null) &&
+            goalClubId != null &&
+            String(goalClubId) === String(id);
 
-        if (!isSameClubByAssist && !isSameClubByGoalButFallback) {
-          continue;
+          if (!isSameClubByAssist && !isSameClubByGoalButFallback) {
+            continue;
+          }
+
+          // identité du passeur
+          const a = pickAssistIdentityFromGoal(g);
+          if (!a) continue;
+          if (a.playerId == null) continue; // pas d'id => on ne peut pas rattacher proprement
+
+          counts[a.playerId] = (counts[a.playerId] || 0) + 1;
         }
 
-        // identité du passeur
-        const a = pickAssistIdentityFromGoal(g);
-        if (!a) continue;
-        if (a.playerId == null) continue; // pas d'id => on ne peut pas rattacher proprement
+        // 🔥 filtre de sécurité :
+        // garder seulement les joueurs qui EXISTENT dans `players`
+        // (donc pas de "fantômes" venus d'anciens joueurs)
+        const playerIdsInClub = new Set(
+          (players || []).map((p) => String(p.id))
+        );
+        const filteredCounts = {};
+        Object.entries(counts).forEach(([pid, val]) => {
+          if (playerIdsInClub.has(String(pid))) {
+            filteredCounts[pid] = val;
+          }
+        });
 
-        counts[a.playerId] = (counts[a.playerId] || 0) + 1;
-      }
-
-      // 🔥 filtre de sécurité :
-      // garder seulement les joueurs qui EXISTENT dans `players`
-      // (donc pas de "fantômes" créés juste par une passe)
-      const playerIdsInClub = new Set(
-        (players || []).map((p) => String(p.id))
-      );
-      const filteredCounts = {};
-      Object.entries(counts).forEach(([pid, val]) => {
-        if (playerIdsInClub.has(String(pid))) {
-          filteredCounts[pid] = val;
+        if (!stop) {
+          setAssistTotals(filteredCounts);
         }
-      });
-
-      if (!stop) {
-        setAssistTotals(filteredCounts);
-      }
-    } catch (e) {
-      if (!stop) {
-        setAssistTotals({});
+      } catch (e) {
+        if (!stop) {
+          setAssistTotals({});
+        }
       }
     }
-  }
 
-  loadAssistsFromGoals();
-  return () => {
-    stop = true;
-  };
-  // 👇 IMPORTANT :
-  // On dépend de `players` ici parce qu'on en a besoin pour filtrer
-}, [id, players]);
-
+    loadAssistsFromGoals();
+    return () => {
+      stop = true;
+    };
+  }, [id, players]);
 
   /* ---------- Utils locaux ---------- */
   const playerName = (p) =>
     p?.name ||
     [p?.first_name, p?.last_name].filter(Boolean).join(" ") ||
+    p?.full_name ||
     "—";
 
-  // regroupe les joueurs par ligne (Gardiens / Défenseurs / Milieux / Attaquants / Autres)
+  // normalise le nom pour regrouper les doublons ("Alpha Amadou Diallo" vs "Alpha Amadou Diallo")
+  function normName(p) {
+    return playerName(p).trim().toLowerCase();
+  }
+
+  // score visuel pour choisir la meilleure fiche quand doublons
+  function visualScore(p) {
+    let score = 0;
+    if (p.number && Number(p.number) !== 0) score += 4;
+    if (
+      p.photo ||
+      p.player_photo ||
+      p.avatar ||
+      p.image ||
+      p.image_url
+    ) {
+      score += 3;
+    }
+    if (p.position || p.role) score += 2;
+    return score;
+  }
+
+  /* ---------- Regroupement par lignes (Gardiens / Déf / Milieux / etc.) ---------- */
   const grouped = useMemo(() => {
     const buckets = {
       Gardiens: [],
@@ -344,17 +372,9 @@ export default function ClubDetail() {
       Attaquants: [],
       Autres: [],
     };
-    (players || []).forEach((p) => buckets[positionCategory(p)].push(p));
-
-    const sortPlayers = (a, b) => {
-      const na = Number.isFinite(Number(a.number)) ? Number(a.number) : 9999;
-      const nb = Number.isFinite(Number(b.number)) ? Number(b.number) : 9999;
-      if (na !== nb) return na - nb;
-      return (playerName(a) || "").localeCompare(playerName(b) || "", "fr", {
-        sensitivity: "base",
-      });
-    };
-    Object.keys(buckets).forEach((k) => buckets[k].sort(sortPlayers));
+    (players || []).forEach((p) => {
+      buckets[positionCategory(p)].push(p);
+    });
     return buckets;
   }, [players]);
 
@@ -362,9 +382,82 @@ export default function ClubDetail() {
   if (err) return <p className="text-red-600">Erreur : {err}</p>;
   if (!club) return <p>Club introuvable.</p>;
 
-  /* ---------- TABLEAU JOUEURS ---------- */
-  const SectionTable = ({ title, list }) =>
-    list.length > 0 && (
+  /* ---------- TABLEAU JOUEURS (fusion des doublons par nom) ---------- */
+  const SectionTable = ({ title, list }) => {
+    if (!list.length) return null;
+
+    // 1. grouper les joueurs par nom normalisé
+    const byName = new Map();
+    list.forEach((p) => {
+      const key = normName(p);
+      if (!byName.has(key)) {
+        byName.set(key, [p]);
+      } else {
+        byName.get(key).push(p);
+      }
+    });
+
+    // 2. pour chaque nom, choisir la meilleure fiche visuelle
+    //    et fusionner leurs stats cumulées
+    const mergedPlayers = [];
+    for (const [, sameNamePlayers] of byName.entries()) {
+      // choisir la fiche "officielle"
+      let best = sameNamePlayers[0];
+      for (const cand of sameNamePlayers.slice(1)) {
+        if (visualScore(cand) > visualScore(best)) {
+          best = cand;
+        }
+      }
+
+      // cumul stats (buts, assists, cartons)
+      let totalGoals = 0;
+      let totalAssists = 0;
+      let totalYC = 0;
+      let totalRC = 0;
+
+      sameNamePlayers.forEach((pl) => {
+        const t = totals[pl.id] || {};
+        const assistFromGoals = assistTotals[pl.id];
+
+        const goalsVal = t.goals ?? stat(pl, ["goals", "g", "buts"]);
+        const assistsVal =
+          assistFromGoals ??
+          t.assists ??
+          stat(pl, ["assists", "assist", "a", "passes_decisives"]);
+        const ycVal =
+          t.yellows ?? stat(pl, ["yellow_cards", "yc", "cartons_jaunes"]);
+        const rcVal =
+          t.reds ?? stat(pl, ["red_cards", "rc", "cartons_rouges"]);
+
+        totalGoals += Number(goalsVal || 0);
+        totalAssists += Number(assistsVal || 0);
+        totalYC += Number(ycVal || 0);
+        totalRC += Number(rcVal || 0);
+      });
+
+      // on stocke tout ça dans l'objet best
+      mergedPlayers.push({
+        ...best,
+        __mergedStats: {
+          goals: totalGoals,
+          assists: totalAssists,
+          yellows: totalYC,
+          reds: totalRC,
+        },
+      });
+    }
+
+    // 3. tri final par numéro puis nom
+    mergedPlayers.sort((a, b) => {
+      const na = Number.isFinite(Number(a.number)) ? Number(a.number) : 9999;
+      const nb = Number.isFinite(Number(b.number)) ? Number(b.number) : 9999;
+      if (na !== nb) return na - nb;
+      return (playerName(a) || "").localeCompare(playerName(b) || "", "fr", {
+        sensitivity: "base",
+      });
+    });
+
+    return (
       <div className="rounded-2xl ring-1 ring-black/10 overflow-hidden bg-white">
         {/* Barre titre verte */}
         <div className="px-4 py-2 bg-emerald-700 text-white font-semibold">
@@ -396,32 +489,38 @@ export default function ClubDetail() {
                   </HeaderIcon>
                 </th>
                 <th className="w-12 py-2 px-3 text-center">
-                    <HeaderIcon>
-                      <span className="text-[22px] leading-none">🟥</span>
-                    </HeaderIcon>
+                  <HeaderIcon>
+                    <span className="text-[22px] leading-none">🟥</span>
+                  </HeaderIcon>
                 </th>
               </tr>
             </thead>
             <tbody>
-              {list.map((p, idx) => {
+              {mergedPlayers.map((p, idx) => {
+                const merged = p.__mergedStats || {};
                 const t = totals[p.id] || {};
-
-                // passes décisives calculées (vraie vérité)
                 const assistFromGoals = assistTotals[p.id];
 
                 const goals =
-                  t.goals ?? stat(p, ["goals", "g", "buts"]);
+                  merged.goals ??
+                  t.goals ??
+                  stat(p, ["goals", "g", "buts"]);
 
                 const assists =
+                  merged.assists ??
                   assistFromGoals ??
                   t.assists ??
                   stat(p, ["assists", "assist", "a", "passes_decisives"]);
 
                 const yc =
-                  t.yellows ?? stat(p, ["yellow_cards", "yc", "cartons_jaunes"]);
+                  merged.yellows ??
+                  t.yellows ??
+                  stat(p, ["yellow_cards", "yc", "cartons_jaunes"]);
 
                 const rc =
-                  t.reds ?? stat(p, ["red_cards", "rc", "cartons_rouges"]);
+                  merged.reds ??
+                  t.reds ??
+                  stat(p, ["red_cards", "rc", "cartons_rouges"]);
 
                 return (
                   <tr key={p.id ?? `${title}-${idx}`} className="border-t">
@@ -469,6 +568,7 @@ export default function ClubDetail() {
         </div>
       </div>
     );
+  };
 
   /* ---------- TABLEAU STAFF ---------- */
   function StaffTable() {
