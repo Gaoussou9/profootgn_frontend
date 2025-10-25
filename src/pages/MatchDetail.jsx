@@ -1,6 +1,6 @@
 // src/pages/MatchDetail.jsx
 import { useEffect, useMemo, useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import api from "../api/client";
 import { usePlayerSheet } from "../components/PlayerSheet";
 
@@ -571,7 +571,6 @@ function deriveLineupsFromMatch(m) {
 /* ===================== Page MatchDetail ===================== */
 export default function MatchDetail() {
   const { id } = useParams();
-  const navigate = useNavigate();
   const { openSheet } = usePlayerSheet();
 
   const [m, setM] = useState(null);
@@ -722,10 +721,8 @@ export default function MatchDetail() {
     if (v === "Y" || v.includes("YELLOW") || v.includes("JAUNE")) return "🟨";
     return "🟨";
   };
-  const cardLabel = (ev) => {
-    const v = (ev?.color ?? ev?.type ?? ev?.card ?? ev?.card_type ?? "").toString().toUpperCase();
-    if (v === "R" || v.includes("RED") || v.includes("ROUGE")) return "";
-    if (v === "Y" || v.includes("YELLOW") || v.includes("JAUNE")) return "";
+  const cardLabel = () => {
+    // On n'affiche plus "Carton jaune" en texte titre, juste le visuel + nom
     return "";
   };
 
@@ -850,31 +847,36 @@ export default function MatchDetail() {
                       key={`g-${idx}-${min}`}
                       className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 py-2"
                     >
-                      {/* Left (home) */}
+                      {/* Côté home */}
                       <div className="flex items-center gap-2 min-w-0">
                         {ev.onHomeSide && (
                           <>
-                            <span className="text-sm text-gray-500 tabular-nums">{min}'</span>
+                            <span className="text-sm text-gray-500 tabular-nums shrink-0">{min}'</span>
+
                             <TinyAvatar
                               src={pPhoto}
                               alt={pFull}
                               size={32}
                               onClick={pId ? () => openSheet(pId) : undefined}
                             />
+
                             <div className="min-w-0">
-                              <div className="flex items-center gap-2 min-w-0">
-                                <span className="font-medium text-[13px] sm:text-base whitespace-normal" title={pFull}>
+                              {/* LIGNE UNIQUE nom + ballon */}
+                              <div className="flex items-center flex-nowrap gap-2 min-w-0">
+                                <span
+                                  className="font-medium text-[13px] sm:text-base whitespace-nowrap truncate"
+                                  title={pFull}
+                                >
                                   {pShort}
                                   {goalTag(g)}
                                 </span>
                                 <BallIcon />
                               </div>
+
+                              {/* passeur en petit */}
                               {aFull && (
-                                <div className="flex items-center gap-1 text-[11px] text-gray-500 mt-0.5">
-                                  <span>&nbsp;</span>
-                                  <span className="whitespace-normal" title={aFull}>
-                                    {aShort}
-                                  </span>
+                                <div className="flex items-center flex-nowrap gap-1 text-[11px] text-gray-500 mt-0.5">
+                                  <span className="whitespace-nowrap text-gray-500">G. Cissé</span>
                                   <AssistIconImg />
                                 </div>
                               )}
@@ -883,33 +885,37 @@ export default function MatchDetail() {
                         )}
                       </div>
 
-                      
+                      {/* colonne centrale (vide, juste pour grid) */}
+                      <div className="text-center text-sm text-gray-600" />
 
-                      {/* Right (away) */}
+                      {/* Côté away */}
                       <div className="flex items-center gap-2 justify-end min-w-0">
                         {!ev.onHomeSide && (
                           <>
-                            <span className="text-sm text-gray-500 tabular-nums">{min}'</span>
+                            <span className="text-sm text-gray-500 tabular-nums shrink-0">{min}'</span>
+
                             <TinyAvatar
                               src={pPhoto}
                               alt={pFull}
                               size={32}
                               onClick={pId ? () => openSheet(pId) : undefined}
                             />
+
                             <div className="min-w-0 text-right">
-                              <div className="flex items-center gap-2 justify-end min-w-0">
-                                <span className="font-medium text-[13px] sm:text-base whitespace-normal" title={pFull}>
+                              <div className="flex items-center flex-nowrap gap-2 justify-end min-w-0">
+                                <span
+                                  className="font-medium text-[13px] sm:text-base whitespace-nowrap truncate text-right"
+                                  title={pFull}
+                                >
                                   {pShort}
                                   {goalTag(g)}
                                 </span>
                                 <BallIcon />
                               </div>
+
                               {aFull && (
-                                <div className="flex items-center gap-1 justify-end text-[11px] text-gray-500 mt-0.5">
-                                  <span>&nbsp;</span>
-                                  <span className="whitespace-normal" title={aFull}>
-                                    {aShort}
-                                  </span>
+                                <div className="flex items-center flex-nowrap gap-1 justify-end text-[11px] text-gray-500 mt-0.5">
+                                  <span className="whitespace-nowrap text-gray-500">{aShort}</span>
                                   <AssistIconImg />
                                 </div>
                               )}
@@ -931,48 +937,62 @@ export default function MatchDetail() {
 
                 return (
                   <div key={`c-${idx}-${min}`} className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 py-2">
-                    {/* Left (home) */}
+                    {/* Côté home */}
                     <div className="flex items-center gap-2 min-w-0">
                       {ev.onHomeSide && (
                         <>
-                          <span className="text-sm text-gray-500 tabular-nums">{min}'</span>
+                          <span className="text-sm text-gray-500 tabular-nums shrink-0">{min}'</span>
+
+                          {/* carte */}
                           <span className="inline-flex items-center justify-center w-5 h-5 leading-none shrink-0">
                             {emoji}
                           </span>
+
                           <TinyAvatar
                             src={cPhoto}
                             alt={pFull}
                             size={32}
                             onClick={pId ? () => openSheet(pId) : undefined}
                           />
+
+                          {/* bloc nom sur une seule ligne */}
                           <div className="min-w-0">
-                            <div className="font-medium text-[13px] sm:text-base">{cardLabel(c)}</div>
-                            <div className="text-[11px] text-gray-600" title={pFull}>
-                              {pShort}
+                            <div className="flex items-center flex-nowrap gap-1 text-[13px] sm:text-base font-medium text-gray-900">
+                              {/* pas de libellé 'Carton jaune' pour gagner de la place */}
+                              <span className="whitespace-nowrap truncate" title={pFull}>
+                                {pShort}
+                              </span>
                             </div>
                           </div>
                         </>
                       )}
                     </div>
 
-                    {/* Right (away) */}
+                    {/* colonne centrale vide */}
+                    <div className="text-center text-sm text-gray-600" />
+
+                    {/* Côté away */}
                     <div className="flex items-center gap-2 justify-end min-w-0">
                       {!ev.onHomeSide && (
                         <>
-                          <span className="text-sm text-gray-500 tabular-nums">{min}'</span>
+                          <span className="text-sm text-gray-500 tabular-nums shrink-0">{min}'</span>
+
                           <span className="inline-flex items-center justify-center w-5 h-5 leading-none shrink-0">
                             {emoji}
                           </span>
+
                           <TinyAvatar
                             src={cPhoto}
                             alt={pFull}
                             size={32}
                             onClick={pId ? () => openSheet(pId) : undefined}
                           />
+
                           <div className="min-w-0 text-right">
-                            <div className="font-medium text-[13px] sm:text-base">{cardLabel(c)}</div>
-                            <div className="text-[11px] text-gray-600" title={pFull}>
-                              {pShort}
+                            <div className="flex items-center flex-nowrap gap-1 justify-end text-[13px] sm:text-base font-medium text-gray-900">
+                              <span className="whitespace-nowrap truncate text-right" title={pFull}>
+                                {pShort}
+                              </span>
                             </div>
                           </div>
                         </>
@@ -986,19 +1006,11 @@ export default function MatchDetail() {
         </section>
       ) : (
         <section aria-labelledby="compos-panel">
-          <div className="bg-white rounded-2xl shadow-sm ring-1 ring-gray-100 p-4">
+          <div className="bg-white rounded-2xl shadow-sm ring-1 ring-gray-300 p-4">
             <div className="flex items-center justify-between mb-3">
               <h2 id="compos-panel" className="text-lg font-semibold">
                 Compositions
               </h2>
-              <button
-                type="button"
-                onClick={loadLineupsFresh}
-                className="text-sm px-3 py-1.5 rounded-md border border-gray-200 hover:bg-gray-50"
-                disabled={loadingCompo}
-              >
-                {loadingCompo ? "Chargement..." : ""}
-              </button>
             </div>
 
             <div className="grid md:grid-cols-2 gap-6">
@@ -1026,7 +1038,6 @@ export default function MatchDetail() {
               />
             </div>
           </div>
-
         </section>
       )}
     </section>
