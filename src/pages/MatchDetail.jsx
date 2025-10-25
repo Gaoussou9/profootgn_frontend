@@ -35,7 +35,9 @@ const TinyAvatar = ({ src, alt, size = 32, onClick }) => (
     alt={alt || "Joueur"}
     width={size}
     height={size}
-    className={`rounded-full object-cover ring-1 ring-gray-200 shrink-0 ${onClick ? "cursor-pointer" : ""}`}
+    className={`rounded-full object-cover ring-1 ring-gray-200 shrink-0 ${
+      onClick ? "cursor-pointer" : ""
+    }`}
     onError={(e) => (e.currentTarget.src = "/player-placeholder.png")}
     onClick={onClick}
     role={onClick ? "button" : undefined}
@@ -83,7 +85,8 @@ const displayName = (p = {}) =>
   p.player_name ||
   p.name ||
   [p.first_name, p.last_name].filter(Boolean).join(" ").trim() ||
-  (p.player && [p.player.first_name, p.player.last_name].filter(Boolean).join(" ").trim()) ||
+  (p.player &&
+    [p.player.first_name, p.player.last_name].filter(Boolean).join(" ").trim()) ||
   "";
 
 /** "Gaoussou Cissé" -> "G. Cissé" */
@@ -98,7 +101,14 @@ const toShort = (fullName) => {
 };
 
 const getRating = (p = {}) => {
-  let v = p.rating ?? p.note ?? p.score ?? p.player?.rating ?? p.player?.note ?? p.player?.score ?? null;
+  let v =
+    p.rating ??
+    p.note ??
+    p.score ??
+    p.player?.rating ??
+    p.player?.note ??
+    p.player?.score ??
+    null;
   if (typeof v === "string") v = v.replace(",", ".").trim();
   const n = Number(v);
   return Number.isFinite(n) && n > 0 ? n : null;
@@ -109,7 +119,8 @@ const getClubId = (p) => {
   if (typeof p.club === "number") return p.club;
   if (typeof p.club_id === "number") return p.club_id;
   if (typeof p.club === "string" && /^\d+$/.test(p.club)) return Number(p.club);
-  if (typeof p.club_id === "string" && /^\d+$/.test(p.club_id)) return Number(p.club_id);
+  if (typeof p.club_id === "string" && /^\d+$/.test(p.club_id))
+    return Number(p.club_id);
   if (p.club && typeof p.club.id === "number") return p.club.id;
   return null;
 };
@@ -118,7 +129,8 @@ const isStarting = (p) => {
   const v = p.is_starting ?? p.starter ?? p.starting ?? null;
   if (typeof v === "boolean") return v;
   if (typeof v === "number") return v === 1;
-  if (typeof v === "string") return ["1", "true", "yes", "y"].includes(v.toLowerCase());
+  if (typeof v === "string")
+    return ["1", "true", "yes", "y"].includes(v.toLowerCase());
   return !!v;
 };
 
@@ -131,7 +143,9 @@ const normName = (s) =>
     .toLowerCase();
 
 const bestNameFor = (p) =>
-  displayName(p) || p.player_name || [p.first_name, p.last_name].filter(Boolean).join(" ").trim();
+  displayName(p) ||
+  p.player_name ||
+  [p.first_name, p.last_name].filter(Boolean).join(" ").trim();
 
 function buildEventStats(m) {
   const stats = {};
@@ -143,11 +157,16 @@ function buildEventStats(m) {
   };
 
   (m.goals || []).forEach((g) => {
-    bump(g.player_name || g.player?.name || bestNameFor(g.player || {}), "goals");
+    bump(
+      g.player_name || g.player?.name || bestNameFor(g.player || {}),
+      "goals"
+    );
     const a =
       g.assist_name ||
       g.assist_player_name ||
-      (g.assist && (g.assist.name || `${g.assist.first_name || ""} ${g.assist.last_name || ""}`).trim());
+      (g.assist &&
+        (g.assist.name ||
+          `${g.assist.first_name || ""} ${g.assist.last_name || ""}`.trim()));
     if (a) bump(a, "assists");
   });
 
@@ -176,7 +195,8 @@ const PlayerChip = ({
 }) => {
   const { openSheet, openSheetSmart } = usePlayerSheet();
   const label = (name && String(name).trim()) || "";
-  const showNote = Number.isFinite(Number(note)) && Number(note) > 0 ? Number(note) : null;
+  const showNote =
+    Number.isFinite(Number(note)) && Number(note) > 0 ? Number(note) : null;
 
   const ratingClass =
     showNote == null
@@ -215,7 +235,11 @@ const PlayerChip = ({
           onClick={onClick}
         />
 
-        {isMotm && <span className="absolute -top-4 -left-4 text-yellow-400 text-4xl drop-shadow">★</span>}
+        {isMotm && (
+          <span className="absolute -top-4 -left-4 text-yellow-400 text-4xl drop-shadow">
+            ★
+          </span>
+        )}
 
         {showNote != null && (
           <span
@@ -260,7 +284,9 @@ const PlayerChip = ({
         )}
 
         {isCaptain && (
-          <span className="absolute -bottom-1 -right-1 text-[11px] font-bold bg-sky-600 text-white rounded px-1">C</span>
+          <span className="absolute -bottom-1 -right-1 text-[11px] font-bold bg-sky-600 text-white rounded px-1">
+            C
+          </span>
         )}
 
         {Number.isFinite(Number(number)) && (
@@ -282,7 +308,9 @@ const parseFormation = (formationStr, starters) => {
   if (typeof formationStr === "string" && /^\d+(-\d+)+$/.test(formationStr)) {
     return formationStr.split("-").map((n) => Number(n));
   }
-  const count = (prefix) => starters.filter((p) => (p.position || "").toUpperCase().startsWith(prefix)).length;
+  const count = (prefix) =>
+    starters.filter((p) => (p.position || "").toUpperCase().startsWith(prefix))
+      .length;
   const d = count("D") || 4;
   const m = count("M") || 3;
   const f = count("F") || count("A") || 3;
@@ -290,8 +318,12 @@ const parseFormation = (formationStr, starters) => {
 };
 
 const makeLines = (starters, formationStr) => {
-  const GK = starters.filter((p) => (p.position || "").toUpperCase().startsWith("G"));
-  const field = starters.filter((p) => !(p.position || "").toUpperCase().startsWith("G"));
+  const GK = starters.filter((p) =>
+    (p.position || "").toUpperCase().startsWith("G")
+  );
+  const field = starters.filter(
+    (p) => !(p.position || "").toUpperCase().startsWith("G")
+  );
   field.sort(
     (a, b) =>
       (a.number ?? 999) - (b.number ?? 999) ||
@@ -321,23 +353,41 @@ const Pitch = ({ children }) => (
 );
 
 /* ===================== Carte équipe ===================== */
-const TeamLineupCard = ({ title, logo, starters, subs, formation, coachName, teamAvg, motmId, evStats }) => {
+const TeamLineupCard = ({
+  title,
+  logo,
+  starters,
+  subs,
+  formation,
+  coachName,
+  teamAvg,
+  motmId,
+  evStats,
+}) => {
   const { gk, rows } = makeLines(starters, formation);
   const isMotm = (p) => motmId != null && p && p.id === motmId;
 
-  const badgeAvg =
-    Number.isFinite(Number(teamAvg)) ? (
-      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
-        {Number(teamAvg).toFixed(2)} moy. équipe
-      </span>
-    ) : null;
+  const badgeAvg = Number.isFinite(Number(teamAvg)) ? (
+    <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+      {Number(teamAvg).toFixed(2)} moy. équipe
+    </span>
+  ) : null;
 
   const chipFor = (p) => {
     const nm = bestNameFor(p);
-    const ev = evStats[normName(nm)] || { goals: 0, assists: 0, yellow: 0, red: 0 };
+    const ev = evStats[normName(nm)] || {
+      goals: 0,
+      assists: 0,
+      yellow: 0,
+      red: 0,
+    };
     return (
       <PlayerChip
-        id={p.player_id ?? (typeof p.player === "number" ? p.player : p.player?.id) ?? null}
+        id={
+          p.player_id ??
+          (typeof p.player === "number" ? p.player : p.player?.id) ??
+          null
+        }
         clubId={getClubId(p)}
         name={toShort(nm)}
         number={p.number}
@@ -354,12 +404,20 @@ const TeamLineupCard = ({ title, logo, starters, subs, formation, coachName, tea
   return (
     <div className="border rounded-2xl p-4 bg-white/60">
       <div className="flex items-center gap-3 mb-3">
-        <img src={logo || "/club-placeholder.png"} alt={title} className="w-10 h-10 object-contain" />
+        <img
+          src={logo || "/club-placeholder.png"}
+          alt={title}
+          className="w-10 h-10 object-contain"
+        />
         <h3 className="text-base font-semibold">{title}</h3>
       </div>
 
       <Pitch>
-        {gk && <div className="absolute left-1/2 -translate-x-1/2 bottom-[8%]">{chipFor(gk)}</div>}
+        {gk && (
+          <div className="absolute left-1/2 -translate-x-1/2 bottom-[8%]">
+            {chipFor(gk)}
+          </div>
+        )}
         {rows.map((line, i) => {
           const bottoms = ["35%", "52%", "70%", "80%"];
           const bottom = bottoms[i] || `${80 - i * 12}%`;
@@ -368,7 +426,10 @@ const TeamLineupCard = ({ title, logo, starters, subs, formation, coachName, tea
             <div key={i} className="absolute inset-x-3" style={{ bottom }}>
               <div
                 className="grid"
-                style={{ gridTemplateColumns: `repeat(${count}, minmax(0, 1fr))`, columnGap: 24 }}
+                style={{
+                  gridTemplateColumns: `repeat(${count}, minmax(0, 1fr))`,
+                  columnGap: 24,
+                }}
               >
                 {line.map((p, idx) => (
                   <div key={idx} className="flex justify-center">
@@ -400,7 +461,9 @@ const TeamLineupCard = ({ title, logo, starters, subs, formation, coachName, tea
 
       {subs?.length ? (
         <div className="mt-4">
-          <h4 className="text-sm font-semibold tracking-wide text-gray-700 mb-2">REMPLAÇANTS</h4>
+          <h4 className="text-sm font-semibold tracking-wide text-gray-700 mb-2">
+            REMPLAÇANTS
+          </h4>
           <ul className="divide-y rounded-xl ring-1 ring-gray-100 bg-white/70">
             {subs.map((p, i) => {
               const nmFull = bestNameFor(p);
@@ -414,12 +477,20 @@ const TeamLineupCard = ({ title, logo, starters, subs, formation, coachName, tea
                   : rating < 7.5
                   ? "bg-blue-100 text-blue-700"
                   : "bg-green-100 text-green-700";
-              const ev = evStats[normName(nmFull)] || { goals: 0, assists: 0, yellow: 0, red: 0 };
+              const ev = evStats[normName(nmFull)] || {
+                goals: 0,
+                assists: 0,
+                yellow: 0,
+                red: 0,
+              };
 
               const { openSheet, openSheetSmart } = usePlayerSheet();
 
               return (
-                <li key={`sb-${p.id || i}`} className="flex items-center gap-2 px-3 py-2">
+                <li
+                  key={`sb-${p.id || i}`}
+                  className="flex items-center gap-2 px-3 py-2"
+                >
                   <img
                     src={p.photo || p.player_photo || "/player-placeholder.png"}
                     alt={nmFull || "Joueur"}
@@ -428,19 +499,32 @@ const TeamLineupCard = ({ title, logo, starters, subs, formation, coachName, tea
                       e.currentTarget.src = "/player-placeholder.png";
                     }}
                     onClick={() => {
-                      const pid = p.player_id ?? (typeof p.player === "number" ? p.player : p.player?.id) ?? null;
+                      const pid =
+                        p.player_id ??
+                        (typeof p.player === "number"
+                          ? p.player
+                          : p.player?.id) ??
+                        null;
                       if (pid) openSheet(pid);
-                      else openSheetSmart({ name: nmFull, clubId: getClubId(p) });
+                      else
+                        openSheetSmart({
+                          name: nmFull,
+                          clubId: getClubId(p),
+                        });
                     }}
                     title={nmFull}
                   />
                   <span className="tabular-nums w-8 text-gray-700">
-                    {Number.isFinite(Number(p.number)) ? String(p.number) : ""}
+                    {Number.isFinite(Number(p.number))
+                      ? String(p.number)
+                      : ""}
                   </span>
                   <span className="flex-1 truncate" title={nmFull}>
                     {nm}
                   </span>
-                  <span className="text-[11px] uppercase tracking-wide text-gray-500 mr-2">{p.position || ""}</span>
+                  <span className="text-[11px] uppercase tracking-wide text-gray-500 mr-2">
+                    {p.position || ""}
+                  </span>
 
                   {(ev.goals > 0 || ev.assists > 0) && (
                     <span className="inline-flex items-center gap-1 mr-2 text-[11px]">
@@ -467,13 +551,18 @@ const TeamLineupCard = ({ title, logo, starters, subs, formation, coachName, tea
                         />
                       ))}
                       {Array.from({ length: ev.red }).map((_, k) => (
-                        <span key={`rb-${k}`} className="w-2.5 h-3.5 bg-red-500 border border-red-700 rounded-sm" />
+                        <span
+                          key={`rb-${k}`}
+                          className="w-2.5 h-3.5 bg-red-500 border border-red-700 rounded-sm"
+                        />
                       ))}
                     </span>
                   )}
 
                   {rating != null && (
-                    <span className={`text-[11px] font-semibold rounded px-1 ${ratingClass}`}>
+                    <span
+                      className={`text-[11px] font-semibold rounded px-1 ${ratingClass}`}
+                    >
                       {rating.toFixed(1)}
                     </span>
                   )}
@@ -518,23 +607,41 @@ const normalizeQuickAdminToFlat = (quick, matchId) => {
   return [
     ...pick(home?.xi, home?.club_id, true),
     ...pick(home?.bench, home?.club_id, false),
-    ...pick(away?.xi, away?.club_id, true),
-    ...pick(away?.bench, away?.club_id, false),
+    ...pick(away?.xi, home?.club_id, true),
+    ...pick(away?.bench, home?.club_id, false),
   ];
 };
 
 /* ===== Fallback depuis le détail match ===== */
-const toName = (p = {}) => p.player_name || p.name || [p.first_name, p.last_name].filter(Boolean).join(" ").trim();
-const toNum = (p = {}) => p.number ?? p.shirt_number ?? p.jersey_number ?? p.no ?? null;
+const toName = (p = {}) =>
+  p.player_name ||
+  p.name ||
+  [p.first_name, p.last_name].filter(Boolean).join(" ").trim();
+const toNum = (p = {}) =>
+  p.number ?? p.shirt_number ?? p.jersey_number ?? p.no ?? null;
 const toPos = (p = {}) => p.position || p.pos || p.role || "";
-const toPhoto = (p = {}) => p.photo || p.player_photo || p.picture || p.image_url || null;
+const toPhoto = (p = {}) =>
+  p.photo || p.player_photo || p.picture || p.image_url || null;
 
 function deriveLineupsFromMatch(m) {
   if (!m) return { items: [], meta: {} };
-  const pick = (...keys) => keys.map((k) => m?.[k]).find((v) => Array.isArray(v)) || [];
-  const homeStarters = pick("home_lineup", "home_xi", "home_starting", "home_players_starting", "home_players");
+  const pick = (...keys) =>
+    keys.map((k) => m?.[k]).find((v) => Array.isArray(v)) || [];
+  const homeStarters = pick(
+    "home_lineup",
+    "home_xi",
+    "home_starting",
+    "home_players_starting",
+    "home_players"
+  );
   const homeSubs = pick("home_subs", "home_bench", "home_reserves");
-  const awayStarters = pick("away_lineup", "away_xi", "away_starting", "away_players_starting", "away_players");
+  const awayStarters = pick(
+    "away_lineup",
+    "away_xi",
+    "away_starting",
+    "away_players_starting",
+    "away_players"
+  );
   const awaySubs = pick("away_subs", "away_bench", "away_reserves");
 
   const normalize = (arr, clubId, is_starting) =>
@@ -548,7 +655,9 @@ function deriveLineupsFromMatch(m) {
       photo: toPhoto(p),
       is_captain: !!(p.captain || p.is_captain),
       rating: p.rating ?? p.note ?? null,
-      player_id: p.player_id ?? (typeof p.player === "number" ? p.player : p.player?.id),
+      player_id:
+        p.player_id ??
+        (typeof p.player === "number" ? p.player : p.player?.id),
     }));
 
   const items = [
@@ -611,8 +720,14 @@ export default function MatchDetail() {
         const h = res.data?.home || {};
         const a = res.data?.away || {};
         setTeamInfo({
-          home: { formation: h.formation || null, coach_name: h.coach_name || null },
-          away: { formation: a.formation || null, coach_name: a.coach_name || null },
+          home: {
+            formation: h.formation || null,
+            coach_name: h.coach_name || null,
+          },
+          away: {
+            formation: a.formation || null,
+            coach_name: a.coach_name || null,
+          },
         });
       })
       .catch(() => {});
@@ -629,7 +744,9 @@ export default function MatchDetail() {
       let items = normalizeLineupsResponse(res.data);
 
       if (!items.length) {
-        const alt = await api.get(`matches/admin/lineups/api/`, { params: { action: "list", match_id: id } });
+        const alt = await api.get(`matches/admin/lineups/api/`, {
+          params: { action: "list", match_id: id },
+        });
         items = normalizeQuickAdminToFlat(alt.data, id);
       }
       if (items.length) setLineups(items);
@@ -659,10 +776,18 @@ export default function MatchDetail() {
     window.scrollTo({ top: y < 0 ? 0 : y, behavior: "smooth" });
   };
 
-  const homeStarters = (lineups || []).filter((p) => clubEq(p, m?.home_club) && isStarting(p));
-  const homeSubs = (lineups || []).filter((p) => clubEq(p, m?.home_club) && !isStarting(p));
-  const awayStarters = (lineups || []).filter((p) => clubEq(p, m?.away_club) && isStarting(p));
-  const awaySubs = (lineups || []).filter((p) => clubEq(p, m?.away_club) && !isStarting(p));
+  const homeStarters = (lineups || []).filter(
+    (p) => clubEq(p, m?.home_club) && isStarting(p)
+  );
+  const homeSubs = (lineups || []).filter(
+    (p) => clubEq(p, m?.home_club) && !isStarting(p)
+  );
+  const awayStarters = (lineups || []).filter(
+    (p) => clubEq(p, m?.away_club) && isStarting(p)
+  );
+  const awaySubs = (lineups || []).filter(
+    (p) => clubEq(p, m?.away_club) && !isStarting(p)
+  );
 
   const globalMotmId = useMemo(() => {
     const starters = [...homeStarters, ...awayStarters];
@@ -678,11 +803,27 @@ export default function MatchDetail() {
     return best?.id ?? null;
   }, [homeStarters, awayStarters]);
 
-  const homeFormation = teamInfo.home.formation || derived.meta.homeFormation || m?.home_formation || m?.formation;
-  const awayFormation = teamInfo.away.formation || derived.meta.awayFormation || m?.away_formation || m?.formation;
+  const homeFormation =
+    teamInfo.home.formation ||
+    derived.meta.homeFormation ||
+    m?.home_formation ||
+    m?.formation;
+  const awayFormation =
+    teamInfo.away.formation ||
+    derived.meta.awayFormation ||
+    m?.away_formation ||
+    m?.formation;
 
-  const homeCoach = teamInfo.home.coach_name || derived.meta.homeCoach || m?.home_coach_name || m?.home_coach;
-  const awayCoach = teamInfo.away.coach_name || derived.meta.awayCoach || m?.away_coach_name || m?.away_coach;
+  const homeCoach =
+    teamInfo.home.coach_name ||
+    derived.meta.homeCoach ||
+    m?.home_coach_name ||
+    m?.home_coach;
+  const awayCoach =
+    teamInfo.away.coach_name ||
+    derived.meta.awayCoach ||
+    m?.away_coach_name ||
+    m?.away_coach;
 
   /* ---------- Timeline (évènements) ---------- */
   const _truthy = (v) =>
@@ -693,9 +834,15 @@ export default function MatchDetail() {
   const goalTag = (g = {}) => {
     const t = (g.type || g.kind || "").toString().toUpperCase();
     const isPen =
-      _truthy(g.penalty) || _truthy(g.is_penalty) || _truthy(g.on_penalty) || ["PEN", "P", "PK", "PENALTY"].includes(t);
+      _truthy(g.penalty) ||
+      _truthy(g.is_penalty) ||
+      _truthy(g.on_penalty) ||
+      ["PEN", "P", "PK", "PENALTY"].includes(t);
     const isOG =
-      _truthy(g.own_goal) || _truthy(g.is_own_goal) || _truthy(g.og) || ["OG", "CSC", "OWN_GOAL", "OWNGOAL"].includes(t);
+      _truthy(g.own_goal) ||
+      _truthy(g.is_own_goal) ||
+      _truthy(g.og) ||
+      ["OG", "CSC", "OWN_GOAL", "OWNGOAL"].includes(t);
     return isPen ? " (pen.)" : isOG ? " (csc)" : "";
   };
   const playerLabelEv = (ev = {}) => {
@@ -712,18 +859,18 @@ export default function MatchDetail() {
       ev.assist ||
       ev.assist_player_name ||
       (ev.assist &&
-        (ev.assist.first_name ? `${ev.assist.first_name} ${ev.assist.last_name || ""}`.trim() : null));
+        (ev.assist.first_name
+          ? `${ev.assist.first_name} ${ev.assist.last_name || ""}`.trim()
+          : null));
     return (txt || "").trim() || null;
   };
   const cardEmoji = (ev) => {
-    const v = (ev?.color ?? ev?.type ?? ev?.card ?? ev?.card_type ?? "").toString().toUpperCase();
+    const v = (ev?.color ?? ev?.type ?? ev?.card ?? ev?.card_type ?? "")
+      .toString()
+      .toUpperCase();
     if (v === "R" || v.includes("RED") || v.includes("ROUGE")) return "🟥";
     if (v === "Y" || v.includes("YELLOW") || v.includes("JAUNE")) return "🟨";
     return "🟨";
-  };
-  const cardLabel = () => {
-    // On n'affiche plus "Carton jaune" en texte titre, juste le visuel + nom
-    return "";
   };
 
   const timeline = useMemo(() => {
@@ -746,7 +893,9 @@ export default function MatchDetail() {
       onHomeSide: Number(c.club ?? c.club_id) === homeId,
     }));
 
-    return [...goals, ...cards].sort((a, b) => (a.minute ?? 0) - (b.minute ?? 0));
+    return [...goals, ...cards].sort(
+      (a, b) => (a.minute ?? 0) - (b.minute ?? 0)
+    );
   }, [m]);
 
   const eventStats = useMemo(() => buildEventStats(m || {}), [m]);
@@ -768,7 +917,9 @@ export default function MatchDetail() {
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <Logo src={m.home_club_logo} alt={m.home_club_name} />
-            <span className="font-semibold whitespace-normal break-words">{m.home_club_name}</span>
+            <span className="font-semibold whitespace-normal break-words">
+              {m.home_club_name}
+            </span>
           </div>
 
           <div className="text-center">
@@ -784,7 +935,9 @@ export default function MatchDetail() {
           </div>
 
           <div className="flex items-center gap-3 justify-end min-w-0">
-            <span className="font-semibold whitespace-normal break-words text-right">{m.away_club_name}</span>
+            <span className="font-semibold whitespace-normal break-words text-right">
+              {m.away_club_name}
+            </span>
             <Logo src={m.away_club_logo} alt={m.away_club_name} />
           </div>
         </div>
@@ -805,7 +958,9 @@ export default function MatchDetail() {
                   type="button"
                   onClick={() => onClickTab(key)}
                   className={`relative -mb-px py-3 text-sm font-semibold tracking-wide transition ${
-                    isActive ? "text-emerald-700" : "text-gray-600 hover:text-gray-900"
+                    isActive
+                      ? "text-emerald-700"
+                      : "text-gray-600 hover:text-gray-900"
                   }`}
                 >
                   {label}
@@ -828,7 +983,10 @@ export default function MatchDetail() {
             <h2 id="events-panel" className="text-lg font-semibold mb-3">
               Événements
             </h2>
-            {!timeline.length && <p className="text-gray-500">Aucun événement pour le moment.</p>}
+            {!timeline.length && (
+              <p className="text-gray-500">Aucun événement pour le moment.</p>
+            )}
+
             <div className="divide-y">
               {timeline.map((ev, idx) => {
                 const min = ev.minute ?? "?";
@@ -848,23 +1006,30 @@ export default function MatchDetail() {
                       className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 py-2"
                     >
                       {/* Côté home */}
-                      <div className="flex items-center gap-2 min-w-0">
+                      <div className="flex items-start gap-2 min-w-0">
                         {ev.onHomeSide && (
                           <>
-                            <span className="text-sm text-gray-500 tabular-nums shrink-0">{min}'</span>
+                            {/* minute */}
+                            <span className="text-sm text-gray-500 tabular-nums shrink-0">
+                              {min}'
+                            </span>
 
+                            {/* avatar */}
                             <TinyAvatar
                               src={pPhoto}
                               alt={pFull}
                               size={32}
-                              onClick={pId ? () => openSheet(pId) : undefined}
+                              onClick={
+                                pId ? () => openSheet(pId) : undefined
+                              }
                             />
 
+                            {/* bloc texte */}
                             <div className="min-w-0">
-                              {/* LIGNE UNIQUE nom + ballon */}
-                              <div className="flex items-center flex-nowrap gap-2 min-w-0">
+                              {/* nom + ballon => 1 seule ligne */}
+                              <div className="flex items-center flex-nowrap gap-2 whitespace-nowrap">
                                 <span
-                                  className="font-medium text-[13px] sm:text-base whitespace-nowrap truncate"
+                                  className="font-medium text-[15px] leading-none truncate max-w-[160px]"
                                   title={pFull}
                                 >
                                   {pShort}
@@ -873,10 +1038,15 @@ export default function MatchDetail() {
                                 <BallIcon />
                               </div>
 
-                              {/* passeur en petit */}
+                              {/* passeur */}
                               {aFull && (
-                                <div className="flex items-center flex-nowrap gap-1 text-[11px] text-gray-500 mt-0.5">
-                                  <span className="whitespace-nowrap text-gray-500">G. Cissé</span>
+                                <div className="mt-1 flex items-center flex-nowrap gap-1 text-[11px] text-gray-500 leading-none">
+                                  <span
+                                    className="truncate max-w-[140px]"
+                                    title={aFull}
+                                  >
+                                    {aShort}
+                                  </span>
                                   <AssistIconImg />
                                 </div>
                               )}
@@ -885,26 +1055,30 @@ export default function MatchDetail() {
                         )}
                       </div>
 
-                      {/* colonne centrale (vide, juste pour grid) */}
+                      {/* col vide pour garder la grille symétrique */}
                       <div className="text-center text-sm text-gray-600" />
 
                       {/* Côté away */}
-                      <div className="flex items-center gap-2 justify-end min-w-0">
+                      <div className="flex items-start gap-2 justify-end min-w-0">
                         {!ev.onHomeSide && (
                           <>
-                            <span className="text-sm text-gray-500 tabular-nums shrink-0">{min}'</span>
+                            <span className="text-sm text-gray-500 tabular-nums shrink-0">
+                              {min}'
+                            </span>
 
                             <TinyAvatar
                               src={pPhoto}
                               alt={pFull}
                               size={32}
-                              onClick={pId ? () => openSheet(pId) : undefined}
+                              onClick={
+                                pId ? () => openSheet(pId) : undefined
+                              }
                             />
 
                             <div className="min-w-0 text-right">
-                              <div className="flex items-center flex-nowrap gap-2 justify-end min-w-0">
+                              <div className="flex items-center flex-nowrap gap-2 whitespace-nowrap justify-end">
                                 <span
-                                  className="font-medium text-[13px] sm:text-base whitespace-nowrap truncate text-right"
+                                  className="font-medium text-[15px] leading-none truncate max-w-[160px] text-right"
                                   title={pFull}
                                 >
                                   {pShort}
@@ -914,8 +1088,13 @@ export default function MatchDetail() {
                               </div>
 
                               {aFull && (
-                                <div className="flex items-center flex-nowrap gap-1 justify-end text-[11px] text-gray-500 mt-0.5">
-                                  <span className="whitespace-nowrap text-gray-500">{aShort}</span>
+                                <div className="mt-1 flex items-center flex-nowrap gap-1 text-[11px] text-gray-500 leading-none justify-end">
+                                  <span
+                                    className="truncate max-w-[140px] text-right"
+                                    title={aFull}
+                                  >
+                                    {aShort}
+                                  </span>
                                   <AssistIconImg />
                                 </div>
                               )}
@@ -936,12 +1115,17 @@ export default function MatchDetail() {
                 const pId = getEventPlayerId(c);
 
                 return (
-                  <div key={`c-${idx}-${min}`} className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 py-2">
+                  <div
+                    key={`c-${idx}-${min}`}
+                    className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 py-2"
+                  >
                     {/* Côté home */}
-                    <div className="flex items-center gap-2 min-w-0">
+                    <div className="flex items-start gap-2 min-w-0">
                       {ev.onHomeSide && (
                         <>
-                          <span className="text-sm text-gray-500 tabular-nums shrink-0">{min}'</span>
+                          <span className="text-sm text-gray-500 tabular-nums shrink-0">
+                            {min}'
+                          </span>
 
                           {/* carte */}
                           <span className="inline-flex items-center justify-center w-5 h-5 leading-none shrink-0">
@@ -952,14 +1136,18 @@ export default function MatchDetail() {
                             src={cPhoto}
                             alt={pFull}
                             size={32}
-                            onClick={pId ? () => openSheet(pId) : undefined}
+                            onClick={
+                              pId ? () => openSheet(pId) : undefined
+                            }
                           />
 
-                          {/* bloc nom sur une seule ligne */}
+                          {/* nom joueur sur UNE ligne */}
                           <div className="min-w-0">
-                            <div className="flex items-center flex-nowrap gap-1 text-[13px] sm:text-base font-medium text-gray-900">
-                              {/* pas de libellé 'Carton jaune' pour gagner de la place */}
-                              <span className="whitespace-nowrap truncate" title={pFull}>
+                            <div className="flex items-center flex-nowrap gap-1 text-[15px] font-medium text-gray-900 leading-none whitespace-nowrap">
+                              <span
+                                className="truncate max-w-[160px]"
+                                title={pFull}
+                              >
                                 {pShort}
                               </span>
                             </div>
@@ -968,14 +1156,16 @@ export default function MatchDetail() {
                       )}
                     </div>
 
-                    {/* colonne centrale vide */}
+                    {/* col vide */}
                     <div className="text-center text-sm text-gray-600" />
 
                     {/* Côté away */}
-                    <div className="flex items-center gap-2 justify-end min-w-0">
+                    <div className="flex items-start gap-2 justify-end min-w-0">
                       {!ev.onHomeSide && (
                         <>
-                          <span className="text-sm text-gray-500 tabular-nums shrink-0">{min}'</span>
+                          <span className="text-sm text-gray-500 tabular-nums shrink-0">
+                            {min}'
+                          </span>
 
                           <span className="inline-flex items-center justify-center w-5 h-5 leading-none shrink-0">
                             {emoji}
@@ -985,12 +1175,17 @@ export default function MatchDetail() {
                             src={cPhoto}
                             alt={pFull}
                             size={32}
-                            onClick={pId ? () => openSheet(pId) : undefined}
+                            onClick={
+                              pId ? () => openSheet(pId) : undefined
+                            }
                           />
 
                           <div className="min-w-0 text-right">
-                            <div className="flex items-center flex-nowrap gap-1 justify-end text-[13px] sm:text-base font-medium text-gray-900">
-                              <span className="whitespace-nowrap truncate text-right" title={pFull}>
+                            <div className="flex items-center flex-nowrap gap-1 text-[15px] font-medium text-gray-900 leading-none whitespace-nowrap justify-end">
+                              <span
+                                className="truncate max-w-[160px] text-right"
+                                title={pFull}
+                              >
                                 {pShort}
                               </span>
                             </div>
