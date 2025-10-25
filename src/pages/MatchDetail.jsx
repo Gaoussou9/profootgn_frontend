@@ -1027,20 +1027,22 @@ export default function MatchDetail() {
                             {/* bloc texte */}
                             <div className="min-w-0">
                               {/* nom + ballon => 1 seule ligne */}
-                              <div className="flex items-center flex-nowrap gap-2 whitespace-nowrap">
-                                <span
-                                  className="font-medium text-[15px] leading-none truncate max-w-[160px]"
-                                  title={pFull}
-                                >
-                                  {pShort}
-                                  {goalTag(g)}
-                                </span>
-                                <BallIcon />
-                              </div>
+                             <div className="flex items-center flex-nowrap gap-2 min-w-0">
+  <span
+    className="font-medium text-[10px] sm:text-[10px] whitespace-nowrap text-gray-900"
+    style={{ letterSpacing: "-0.2px" }}
+    title={pFull}
+  >
+    {pShort}
+    {goalTag(g)}
+  </span>
+  <BallIcon size={14} />
+</div>
+
 
                               {/* passeur */}
                               {aFull && (
-                                <div className="mt-1 flex items-center flex-nowrap gap-1 text-[11px] text-gray-500 leading-none">
+                                <div className="mt-1 flex items-center flex-nowrap gap-1 text-[10px] text-gray-500 leading-none">
                                   <span
                                     className="truncate max-w-[140px]"
                                     title={aFull}
@@ -1078,7 +1080,7 @@ export default function MatchDetail() {
                             <div className="min-w-0 text-right">
                               <div className="flex items-center flex-nowrap gap-2 whitespace-nowrap justify-end">
                                 <span
-                                  className="font-medium text-[15px] leading-none truncate max-w-[160px] text-right"
+                                  className="font-medium text-[10px] leading-none truncate max-w-[160px] text-right"
                                   title={pFull}
                                 >
                                   {pShort}
@@ -1088,7 +1090,7 @@ export default function MatchDetail() {
                               </div>
 
                               {aFull && (
-                                <div className="mt-1 flex items-center flex-nowrap gap-1 text-[11px] text-gray-500 leading-none justify-end">
+                                <div className="mt-1 flex items-center flex-nowrap gap-1 text-[10px] text-gray-500 leading-none justify-end">
                                   <span
                                     className="truncate max-w-[140px] text-right"
                                     title={aFull}
@@ -1143,7 +1145,7 @@ export default function MatchDetail() {
 
                           {/* nom joueur sur UNE ligne */}
                           <div className="min-w-0">
-                            <div className="flex items-center flex-nowrap gap-1 text-[15px] font-medium text-gray-900 leading-none whitespace-nowrap">
+                            <div className="flex items-center flex-nowrap gap-1 text-[10px] font-medium text-gray-900 leading-none whitespace-nowrap">
                               <span
                                 className="truncate max-w-[160px]"
                                 title={pFull}
@@ -1181,7 +1183,7 @@ export default function MatchDetail() {
                           />
 
                           <div className="min-w-0 text-right">
-                            <div className="flex items-center flex-nowrap gap-1 text-[15px] font-medium text-gray-900 leading-none whitespace-nowrap justify-end">
+                            <div className="flex items-center flex-nowrap gap-1 text-[10px] font-medium text-gray-900 leading-none whitespace-nowrap justify-end">
                               <span
                                 className="truncate max-w-[160px] text-right"
                                 title={pFull}
