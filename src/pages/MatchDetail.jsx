@@ -192,6 +192,7 @@ const PlayerChip = ({
   isMotm = false,
   ev = { goals: 0, assists: 0, yellow: 0, red: 0 },
   raw,
+  scale = 1, // <--- facteur d'échelle ajouté
 }) => {
   const { openSheet, openSheetSmart } = usePlayerSheet();
   const label = (name && String(name).trim()) || "";
@@ -223,7 +224,13 @@ const PlayerChip = ({
   };
 
   return (
-    <div className="flex flex-col items-center select-none">
+    <div
+      className="flex flex-col items-center select-none"
+      style={{
+        transform: `scale(${scale})`,
+        transformOrigin: "center center",
+      }}
+    >
       <div className="relative w-16 h-16 rounded-full ring-2 ring-white shadow">
         <img
           src={photo || "/player-placeholder.png"}
@@ -363,6 +370,7 @@ const TeamLineupCard = ({
   teamAvg,
   motmId,
   evStats,
+  chipScale = 1, // <--- facteur d'échelle injecté depuis MatchDetail
 }) => {
   const { gk, rows } = makeLines(starters, formation);
   const isMotm = (p) => motmId != null && p && p.id === motmId;
@@ -397,6 +405,7 @@ const TeamLineupCard = ({
         isMotm={isMotm(p)}
         ev={ev}
         raw={p}
+        scale={chipScale} // <--- on applique l'échelle ici
       />
     );
   };
@@ -442,7 +451,7 @@ const TeamLineupCard = ({
         })}
       </Pitch>
 
-      <div className="mt-3 flex items-center justify-between text-sm">
+      <div className="mt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between text-sm gap-2">
         <div className="flex items-center gap-2 text-emerald-700 font-medium">
           {formation && (
             <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
@@ -452,7 +461,7 @@ const TeamLineupCard = ({
           {badgeAvg}
         </div>
         {coachName && (
-          <div className="text-right">
+          <div className="text-right text-gray-700">
             <span className="text-gray-500 mr-1">Coach</span>
             <span className="font-medium">{coachName}</span>
           </div>
@@ -489,12 +498,12 @@ const TeamLineupCard = ({
               return (
                 <li
                   key={`sb-${p.id || i}`}
-                  className="flex items-center gap-2 px-3 py-2"
+                  className="flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-2 text-[13px]"
                 >
                   <img
                     src={p.photo || p.player_photo || "/player-placeholder.png"}
                     alt={nmFull || "Joueur"}
-                    className="w-8 h-8 rounded-full object-cover ring-1 ring-gray-200"
+                    className="w-8 h-8 rounded-full object-cover ring-1 ring-gray-200 shrink-0"
                     onError={(e) => {
                       e.currentTarget.src = "/player-placeholder.png";
                     }}
@@ -514,58 +523,67 @@ const TeamLineupCard = ({
                     }}
                     title={nmFull}
                   />
-                  <span className="tabular-nums w-8 text-gray-700">
-                    {Number.isFinite(Number(p.number))
-                      ? String(p.number)
-                      : ""}
-                  </span>
-                  <span className="flex-1 truncate" title={nmFull}>
-                    {nm}
-                  </span>
-                  <span className="text-[11px] uppercase tracking-wide text-gray-500 mr-2">
-                    {p.position || ""}
-                  </span>
 
-                  {(ev.goals > 0 || ev.assists > 0) && (
-                    <span className="inline-flex items-center gap-1 mr-2 text-[11px]">
-                      {ev.goals > 0 && (
-                        <>
-                          <BallIcon size={14} />
-                          {ev.goals > 1 ? ev.goals : ""}
-                        </>
-                      )}
-                      {ev.assists > 0 && (
-                        <>
-                          <AssistIconImg size={14} />
-                          {ev.assists > 1 ? ev.assists : ""}
-                        </>
-                      )}
+                  {/* numéro + nom prennent la largeur dispo */}
+                  <div className="flex min-w-0 flex-1 items-center gap-2">
+                    <span className="tabular-nums text-gray-700 shrink-0">
+                      {Number.isFinite(Number(p.number))
+                        ? String(p.number)
+                        : ""}
                     </span>
-                  )}
-                  {(ev.yellow > 0 || ev.red > 0) && (
-                    <span className="inline-flex items-center gap-1 mr-2">
-                      {Array.from({ length: ev.yellow }).map((_, k) => (
-                        <span
-                          key={`yb-${k}`}
-                          className="w-2.5 h-3.5 bg-yellow-300 border border-yellow-600 rounded-sm"
-                        />
-                      ))}
-                      {Array.from({ length: ev.red }).map((_, k) => (
-                        <span
-                          key={`rb-${k}`}
-                          className="w-2.5 h-3.5 bg-red-500 border border-red-700 rounded-sm"
-                        />
-                      ))}
+                    <span className="truncate font-medium" title={nmFull}>
+                      {nm}
                     </span>
-                  )}
+                  </div>
 
-                  {rating != null && (
-                    <span
-                      className={`text-[11px] font-semibold rounded px-1 ${ratingClass}`}
-                    >
-                      {rating.toFixed(1)}
+                  {/* poste + stats + note à droite */}
+                  <div className="flex items-center gap-2 shrink-0 text-[11px] text-gray-500">
+                    <span className="uppercase tracking-wide">
+                      {p.position || ""}
                     </span>
-                  )}
+
+                    {(ev.goals > 0 || ev.assists > 0) && (
+                      <span className="inline-flex items-center gap-1 text-[11px] text-gray-700">
+                        {ev.goals > 0 && (
+                          <>
+                            <BallIcon size={14} />
+                            {ev.goals > 1 ? ev.goals : ""}
+                          </>
+                        )}
+                        {ev.assists > 0 && (
+                          <>
+                            <AssistIconImg size={14} />
+                            {ev.assists > 1 ? ev.assists : ""}
+                          </>
+                        )}
+                      </span>
+                    )}
+
+                    {(ev.yellow > 0 || ev.red > 0) && (
+                      <span className="inline-flex items-center gap-1">
+                        {Array.from({ length: ev.yellow }).map((_, k) => (
+                          <span
+                            key={`yb-${k}`}
+                            className="w-2.5 h-3.5 bg-yellow-300 border border-yellow-600 rounded-sm"
+                          />
+                        ))}
+                        {Array.from({ length: ev.red }).map((_, k) => (
+                          <span
+                            key={`rb-${k}`}
+                            className="w-2.5 h-3.5 bg-red-500 border border-red-700 rounded-sm"
+                          />
+                        ))}
+                      </span>
+                    )}
+
+                    {rating != null && (
+                      <span
+                        className={`text-[11px] font-semibold rounded px-1 ${ratingClass}`}
+                      >
+                        {rating.toFixed(1)}
+                      </span>
+                    )}
+                  </div>
                 </li>
               );
             })}
@@ -1019,26 +1037,23 @@ export default function MatchDetail() {
                               src={pPhoto}
                               alt={pFull}
                               size={32}
-                              onClick={
-                                pId ? () => openSheet(pId) : undefined
-                              }
+                              onClick={pId ? () => openSheet(pId) : undefined}
                             />
 
                             {/* bloc texte */}
                             <div className="min-w-0">
                               {/* nom + ballon => 1 seule ligne */}
-                             <div className="flex items-center flex-nowrap gap-2 min-w-0">
-  <span
-    className="font-medium text-[10px] sm:text-[10px] whitespace-nowrap text-gray-900"
-    style={{ letterSpacing: "-0.2px" }}
-    title={pFull}
-  >
-    {pShort}
-    {goalTag(g)}
-  </span>
-  <BallIcon size={14} />
-</div>
-
+                              <div className="flex items-center flex-nowrap gap-2 min-w-0">
+                                <span
+                                  className="font-medium text-[10px] sm:text-[10px] whitespace-nowrap text-gray-900"
+                                  style={{ letterSpacing: "-0.2px" }}
+                                  title={pFull}
+                                >
+                                  {pShort}
+                                  {goalTag(g)}
+                                </span>
+                                <BallIcon size={14} />
+                              </div>
 
                               {/* passeur */}
                               {aFull && (
@@ -1072,9 +1087,7 @@ export default function MatchDetail() {
                               src={pPhoto}
                               alt={pFull}
                               size={32}
-                              onClick={
-                                pId ? () => openSheet(pId) : undefined
-                              }
+                              onClick={pId ? () => openSheet(pId) : undefined}
                             />
 
                             <div className="min-w-0 text-right">
@@ -1138,9 +1151,7 @@ export default function MatchDetail() {
                             src={cPhoto}
                             alt={pFull}
                             size={32}
-                            onClick={
-                              pId ? () => openSheet(pId) : undefined
-                            }
+                            onClick={pId ? () => openSheet(pId) : undefined}
                           />
 
                           {/* nom joueur sur UNE ligne */}
@@ -1177,9 +1188,7 @@ export default function MatchDetail() {
                             src={cPhoto}
                             alt={pFull}
                             size={32}
-                            onClick={
-                              pId ? () => openSheet(pId) : undefined
-                            }
+                            onClick={pId ? () => openSheet(pId) : undefined}
                           />
 
                           <div className="min-w-0 text-right">
@@ -1210,7 +1219,8 @@ export default function MatchDetail() {
               </h2>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-6">
+            {/* 1 colonne mobile, 2 colonnes md+ */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <TeamLineupCard
                 title={m.home_club_name}
                 logo={m.home_club_logo}
@@ -1221,6 +1231,7 @@ export default function MatchDetail() {
                 teamAvg={m.avg_rating_home}
                 motmId={globalMotmId}
                 evStats={eventStats}
+                chipScale={0.7} // <-- RÉDUCTION visuelle sur le terrain
               />
               <TeamLineupCard
                 title={m.away_club_name}
@@ -1232,6 +1243,7 @@ export default function MatchDetail() {
                 teamAvg={m.avg_rating_away}
                 motmId={globalMotmId}
                 evStats={eventStats}
+                chipScale={0.7} // <-- pareil
               />
             </div>
           </div>
