@@ -1231,7 +1231,7 @@ export default function MatchDetail() {
                 teamAvg={m.avg_rating_home}
                 motmId={globalMotmId}
                 evStats={eventStats}
-                chipScale={0.5} // <-- RÉDUCTION visuelle sur le terrain
+                chipScale={0.6} // <-- RÉDUCTION visuelle sur le terrain
               />
               <TeamLineupCard
                 title={m.away_club_name}
@@ -1243,7 +1243,7 @@ export default function MatchDetail() {
                 teamAvg={m.avg_rating_away}
                 motmId={globalMotmId}
                 evStats={eventStats}
-                chipScale={0.5} // <-- pareil
+                chipScale={0.6} // <-- pareil
               />
             </div>
           </div>
