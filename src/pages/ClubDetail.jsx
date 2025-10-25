@@ -229,7 +229,7 @@ export default function ClubDetail() {
           {title.toUpperCase()}
         </div>
 
-        <table className="w-full text-sm">
+        < table className="w-full text-sm min-w-[10px]">
           <thead className="bg-gray-50">
             <tr className="text-gray-600">
               <th className="w-12 py-2 px-3 text-left">No</th>
@@ -319,7 +319,7 @@ export default function ClubDetail() {
         <div className="px-4 py-3 font-semibold border-b bg-gray-50">
           Staff
         </div>
-        <table className="w-full text-sm">
+         <table className="w-full text-sm min-w-[600px]">
           <thead className="bg-gray-100">
             <tr className="text-gray-600">
               <th className="w-14 py-2 px-3 text-left">#</th>
