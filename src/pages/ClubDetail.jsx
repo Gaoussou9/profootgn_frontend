@@ -243,60 +243,91 @@ export default function ClubDetail() {
 
   /* ---------- Recalcule les passes décisives depuis /goals/ ---------- */
   useEffect(() => {
-    let stop = false;
+  let stop = false;
 
-    async function loadAssistsFromGoals() {
-      try {
-        // On récupère tous les buts comme dans AssistsLeaders
-        const r = await api.get("goals/", { params: { page_size: 5000 } });
-        const rawGoals = Array.isArray(r.data?.results)
-          ? r.data.results
-          : Array.isArray(r.data)
-          ? r.data
-          : [];
+  async function loadAssistsFromGoals() {
+    try {
+      // On récupère tous les buts comme dans AssistsLeaders
+      const r = await api.get("goals/", { params: { page_size: 5000 } });
+      const rawGoals = Array.isArray(r.data?.results)
+        ? r.data.results
+        : Array.isArray(r.data)
+        ? r.data
+        : [];
 
-        const counts = {}; // { playerId: totalAssists }
+      const counts = {}; // { playerId: totalAssists }
 
-        for (const g of rawGoals) {
-          // identifie le club du passeur (mêmes champs que AssistsLeaders.jsx)
-          const assistClubId =
-            g.assist_club ??
-            g.assist?.club ??
-            g.club ??
-            g.club_id ??
-            null;
+      for (const g of rawGoals) {
+        // club du passeur
+        const assistClubId =
+          g.assist_club ??
+          g.assist?.club ??
+          g.club ??
+          g.club_id ??
+          null;
 
-          // on ne garde que les passes des joueurs de CE club
-          if (
-            assistClubId == null ||
-            String(assistClubId) !== String(id)
-          ) {
-            continue;
-          }
+        // club du buteur (fallback si assist_club est manquant)
+        const goalClubId =
+          g.club_id ??
+          g.club ??
+          g.club_scored_for ??
+          g.home_club ??
+          g.away_club ??
+          null;
 
-          // récupère l'identité
-          const a = pickAssistIdentityFromGoal(g);
-          if (!a) continue;
-          if (a.playerId == null) continue; // pas d'id clair => on ne peut pas rattacher au joueur du tableau ClubDetail
+        // garder uniquement les passes qu'on peut associer à CE club
+        const isSameClubByAssist =
+          assistClubId != null &&
+          String(assistClubId) === String(id);
 
-          counts[a.playerId] = (counts[a.playerId] || 0) + 1;
+        const isSameClubByGoalButFallback =
+          (!assistClubId || assistClubId == null) &&
+          goalClubId != null &&
+          String(goalClubId) === String(id);
+
+        if (!isSameClubByAssist && !isSameClubByGoalButFallback) {
+          continue;
         }
 
-        if (!stop) {
-          setAssistTotals(counts);
+        // identité du passeur
+        const a = pickAssistIdentityFromGoal(g);
+        if (!a) continue;
+        if (a.playerId == null) continue; // pas d'id => on ne peut pas rattacher proprement
+
+        counts[a.playerId] = (counts[a.playerId] || 0) + 1;
+      }
+
+      // 🔥 filtre de sécurité :
+      // garder seulement les joueurs qui EXISTENT dans `players`
+      // (donc pas de "fantômes" créés juste par une passe)
+      const playerIdsInClub = new Set(
+        (players || []).map((p) => String(p.id))
+      );
+      const filteredCounts = {};
+      Object.entries(counts).forEach(([pid, val]) => {
+        if (playerIdsInClub.has(String(pid))) {
+          filteredCounts[pid] = val;
         }
-      } catch (e) {
-        if (!stop) {
-          setAssistTotals({});
-        }
+      });
+
+      if (!stop) {
+        setAssistTotals(filteredCounts);
+      }
+    } catch (e) {
+      if (!stop) {
+        setAssistTotals({});
       }
     }
+  }
 
-    loadAssistsFromGoals();
-    return () => {
-      stop = true;
-    };
-  }, [id]);
+  loadAssistsFromGoals();
+  return () => {
+    stop = true;
+  };
+  // 👇 IMPORTANT :
+  // On dépend de `players` ici parce qu'on en a besoin pour filtrer
+}, [id, players]);
+
 
   /* ---------- Utils locaux ---------- */
   const playerName = (p) =>
