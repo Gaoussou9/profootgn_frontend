@@ -220,100 +220,10 @@ export default function ClubDetail() {
   if (err) return <p className="text-red-600">Erreur : {err}</p>;
   if (!club) return <p>Club introuvable.</p>;
 
-  /* ---------- Petit composant de stats pour mobile ---------- */
-  function StatPill({ icon, value }) {
-    return (
-      <div className="flex items-center gap-1 text-[11px] leading-none font-medium">
-        <span className="inline-flex items-center justify-center w-4 h-4 text-[14px]">
-          {icon}
-        </span>
-        <span className="tabular-nums">{value}</span>
-      </div>
-    );
-  }
-
-  /* ---------- Ligne joueur pour MOBILE ---------- */
-  function PlayerRowMobile({ p, idx, groupName }) {
-    const t = totals[p.id] || {};
-    const goals = t.goals ?? stat(p, ["goals", "g", "buts"]);
-    const assists =
-      t.assists ?? stat(p, ["assists", "a", "passes_decisives"]);
-    const yc =
-      t.yellows ?? stat(p, ["yellow_cards", "yc", "cartons_jaunes"]);
-    const rc =
-      t.reds ?? stat(p, ["red_cards", "rc", "cartons_rouges"]);
-
-    const num = p.number ?? idx + 1;
-    const pos = p.position || p.role || "—";
-    const nameDisplay = playerName(p);
-
-    return (
-      <div
-        key={p.id ?? `${groupName}-${idx}`}
-        className="flex items-start gap-3 p-3 border-t border-gray-100"
-      >
-        {/* numéro + avatar */}
-        <div className="flex flex-col items-center shrink-0 w-12 text-center">
-          <div className="text-[11px] text-gray-500 tabular-nums">{num}</div>
-          <Avatar
-            src={
-              p.photo ||
-              p.player_photo ||
-              p.avatar ||
-              p.image ||
-              p.image_url
-            }
-            alt={nameDisplay}
-            onClick={p.id ? () => openSheet(p.id) : undefined}
-          />
-        </div>
-
-        {/* infos joueur */}
-        <div className="flex-1 min-w-0">
-          <div className="flex justify-between gap-2">
-            <div className="font-medium text-[14px] leading-tight truncate">
-              {nameDisplay}
-            </div>
-            <div className="text-[11px] text-gray-500 whitespace-nowrap">
-              {pos}
-            </div>
-          </div>
-
-          <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-gray-700">
-            <StatPill icon="⚽" value={goals} />
-            <StatPill icon={<AssistIcon size={16} />} value={assists} />
-            <StatPill icon="🟨" value={yc} />
-            <StatPill icon="🟥" value={rc} />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  /* ---------- Bloc groupe joueurs MOBILE ---------- */
-  function PlayerGroupMobile({ title, list }) {
-    if (!list.length) return null;
-    return (
-      <div className="rounded-2xl ring-1 ring-black/10 bg-white overflow-hidden mb-4">
-        <div className="px-4 py-2 bg-emerald-700 text-white text-xs font-semibold tracking-wide">
-          {title.toUpperCase()}
-        </div>
-        {list.map((p, idx) => (
-          <PlayerRowMobile
-            p={p}
-            idx={idx}
-            key={p.id ?? idx}
-            groupName={title}
-          />
-        ))}
-      </div>
-    );
-  }
-
-  /* ---------- Tableau joueurs DESKTOP/TABLET (>= md) ---------- */
+  /* ---------- TABLEAU JOUEURS (toujours affiché) ---------- */
   const SectionTable = ({ title, list }) =>
     list.length > 0 && (
-      <div className="hidden md:block rounded-2xl ring-1 ring-black/10 overflow-hidden bg-white">
+      <div className="rounded-2xl ring-1 ring-black/10 overflow-hidden bg-white">
         {/* Barre titre verte */}
         <div className="px-4 py-2 bg-emerald-700 text-white font-semibold">
           {title.toUpperCase()}
@@ -401,97 +311,16 @@ export default function ClubDetail() {
       </div>
     );
 
-  /* ---------- Staff : MOBILE CARD LIST (toujours visible) ---------- */
-  function StaffMobile() {
+  /* ---------- TABLEAU STAFF (toujours affiché) ---------- */
+  function StaffTable() {
     if (!Array.isArray(staff) || staff.length === 0) return null;
     return (
-      <div className="block rounded-2xl ring-1 ring-black/10 overflow-hidden bg-white">
-        <div className="px-4 py-2 bg-gray-100 font-semibold text-sm border-b">
+      <div className="rounded-2xl ring-1 ring-black/10 overflow-hidden bg-white">
+        <div className="px-4 py-3 font-semibold border-b bg-gray-50">
           Staff
         </div>
-
-        {staff.map((s, idx) => {
-          const staffName =
-            s.full_name ||
-            s.name ||
-            [s.first_name, s.last_name].filter(Boolean).join(" ") ||
-            "—";
-
-          return (
-            <div
-              key={s.id ?? idx}
-              className="flex items-start gap-3 p-3 border-t border-gray-100"
-            >
-              <div className="flex flex-col items-center shrink-0 w-12 text-center">
-                <div className="text-[11px] text-gray-500 tabular-nums">
-                  {s.id ?? idx + 1}
-                </div>
-                <Avatar
-                  src={s.photo || s.avatar}
-                  alt={staffName}
-                  onClick={s.id ? () => openStaffSheet(s.id) : undefined}
-                />
-              </div>
-
-              <div className="flex-1 min-w-0">
-                <div className="font-medium text-[14px] leading-tight">
-                  {staffName}
-                </div>
-                <div className="text-[11px] text-gray-500 mt-0.5">
-                  {s.role_display || s.role || s.title || "—"}
-                </div>
-
-                {(s.phone || s.email) && (
-                  <div className="mt-2 text-[12px] leading-snug">
-                    {s.phone ? (
-                      <div>
-                        <a
-                          href={`tel:${s.phone}`}
-                          className="hover:underline text-gray-700 break-all"
-                        >
-                          {s.phone}
-                        </a>
-                      </div>
-                    ) : null}
-                    {s.email ? (
-                      <div className="text-gray-500 break-all">
-                        <a
-                          href={`mailto:${s.email}`}
-                          className="hover:underline"
-                        >
-                          {s.email}
-                        </a>
-                      </div>
-                    ) : null}
-                  </div>
-                )}
-
-                <div className="mt-2 inline-flex items-center gap-2 text-[11px]">
-                  <span
-                    className={`inline-block w-2 h-2 rounded-full ${
-                      s.is_active ? "bg-emerald-500" : "bg-gray-300"
-                    }`}
-                  />
-                  <span className="text-gray-600">
-                    {s.is_active ? "Actif" : "Inactif"}
-                  </span>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    );
-  }
-
-  /* ---------- Staff : DESKTOP/TABLET TABLE (>= md) ---------- */
-  function StaffDesktop() {
-    if (!Array.isArray(staff) || staff.length === 0) return null;
-    return (
-      <div className="hidden md:block rounded-2xl ring-1 ring-black/10 overflow-hidden bg-white">
-        <div className="px-4 py-3 font-semibold border-b">Staff</div>
         <table className="w-full text-sm">
-          <thead className="bg-gray-50">
+          <thead className="bg-gray-100">
             <tr className="text-gray-600">
               <th className="w-14 py-2 px-3 text-left">#</th>
               <th className="w-16 py-2 px-3 text-left">Photo</th>
@@ -528,21 +357,27 @@ export default function ClubDetail() {
                   </td>
                   <td className="py-2 px-3">
                     {s.phone ? (
-                      <a href={`tel:${s.phone}`} className="hover:underline">
-                        {s.phone}
-                      </a>
+                      <>
+                        <a
+                          href={`tel:${s.phone}`}
+                          className="hover:underline"
+                        >
+                          {s.phone}
+                        </a>
+                        <br />
+                      </>
                     ) : (
                       "—"
                     )}
                     {s.email && (
-                      <div className="text-xs text-gray-500 break-all">
+                      <span className="text-xs text-gray-500 break-all">
                         <a
                           href={`mailto:${s.email}`}
                           className="hover:underline"
                         >
                           {s.email}
                         </a>
-                      </div>
+                      </span>
                     )}
                   </td>
                   <td className="py-2 px-3">
@@ -607,7 +442,9 @@ export default function ClubDetail() {
         )}
         {(club.founded || club.founded_year) && (
           <div className="p-3 rounded-xl ring-1 ring-black/10 bg-white">
-            <div className="text-[11px] text-gray-500 uppercase">Fondation</div>
+            <div className="text-[11px] text-gray-500 uppercase">
+              Fondation
+            </div>
             <div className="font-medium text-[14px]">
               {club.founded || club.founded_year}
             </div>
@@ -621,27 +458,15 @@ export default function ClubDetail() {
         )}
       </div>
 
-      {/* EFFECTIF PAR POSTES - VERSION MOBILE (cartes empilées, toujours visible) */}
-      <div className="">
-        <PlayerGroupMobile title="Gardiens" list={grouped.Gardiens} />
-        <PlayerGroupMobile title="Défenseurs" list={grouped.Défenseurs} />
-        <PlayerGroupMobile title="Milieux" list={grouped.Milieux} />
-        <PlayerGroupMobile title="Attaquants" list={grouped.Attaquants} />
-        <PlayerGroupMobile title="Autres" list={grouped.Autres} />
-      </div>
-
-      {/* EFFECTIF PAR POSTES - VERSION DESKTOP/TABLET (>= md) */}
+      {/* EFFECTIF PAR POSTES : tableaux (toujours affichés) */}
       <SectionTable title="Gardiens" list={grouped.Gardiens} />
       <SectionTable title="Défenseurs" list={grouped.Défenseurs} />
       <SectionTable title="Milieux" list={grouped.Milieux} />
       <SectionTable title="Attaquants" list={grouped.Attaquants} />
       <SectionTable title="Autres" list={grouped.Autres} />
 
-      {/* STAFF MOBILE (toujours visible) */}
-      <StaffMobile />
-
-      {/* STAFF DESKTOP/TABLET (>= md) */}
-      <StaffDesktop />
+      {/* STAFF : tableau (toujours affiché) */}
+      <StaffTable />
     </section>
   );
 }
