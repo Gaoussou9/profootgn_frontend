@@ -192,7 +192,7 @@ const PlayerChip = ({
   isMotm = false,
   ev = { goals: 0, assists: 0, yellow: 0, red: 0 },
   raw,
-  scale = 1, // <--- facteur d'échelle ajouté
+  scale = 1,
 }) => {
   const { openSheet, openSheetSmart } = usePlayerSheet();
   const label = (name && String(name).trim()) || "";
@@ -370,7 +370,7 @@ const TeamLineupCard = ({
   teamAvg,
   motmId,
   evStats,
-  chipScale = 1, // <--- facteur d'échelle injecté depuis MatchDetail
+  chipScale = 1,
 }) => {
   const { gk, rows } = makeLines(starters, formation);
   const isMotm = (p) => motmId != null && p && p.id === motmId;
@@ -405,7 +405,7 @@ const TeamLineupCard = ({
         isMotm={isMotm(p)}
         ev={ev}
         raw={p}
-        scale={chipScale} // <--- on applique l'échelle ici
+        scale={chipScale}
       />
     );
   };
@@ -752,8 +752,33 @@ export default function MatchDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [m, id]);
 
-  const status = (m?.status || "").toUpperCase();
-  const isFinished = status === "FT" || status === "FINISHED";
+  // Nouveau : dérive le badge LIVE / HT / FT (et plus de chrono)
+  const rawStatus = (m?.status || "").toUpperCase().trim();
+  let badgeLabel = null;
+  if (
+    rawStatus.includes("FT") ||
+    rawStatus === "FINISHED" ||
+    rawStatus === "FULL TIME"
+  ) {
+    badgeLabel = "FT";
+  } else if (
+    rawStatus.includes("HT") ||
+    rawStatus.includes("HALF") ||
+    rawStatus === "HALF TIME" ||
+    rawStatus === "HALF-TIME"
+  ) {
+    badgeLabel = "HT";
+  } else if (
+    rawStatus.includes("LIVE") ||
+    rawStatus.includes("IN PLAY") ||
+    rawStatus.includes("2ND HALF") ||
+    rawStatus.includes("FIRST HALF") ||
+    rawStatus.includes("1ST HALF") ||
+    rawStatus.includes("2ND") ||
+    rawStatus.includes("1ST")
+  ) {
+    badgeLabel = "LIVE";
+  }
 
   const loadLineupsFresh = async () => {
     setLoadingCompo(true);
@@ -926,9 +951,17 @@ export default function MatchDetail() {
     <section className="max-w-3xl mx-auto space-y-6">
       {/* En-tête */}
       <div className="relative bg-white rounded-2xl shadow-sm ring-1 ring-gray-100 p-4">
-        {isFinished && (
-          <div className="absolute right-3 top-3 z-[10] text-xs px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200 pointer-events-none">
-            FT
+        {badgeLabel && (
+          <div
+            className={
+              badgeLabel === "LIVE"
+                ? "absolute right-3 top-3 z-[10] text-xs px-2 py-1 rounded-full bg-red-100 text-red-700 ring-1 ring-red-200 pointer-events-none"
+                : badgeLabel === "HT"
+                ? "absolute right-3 top-3 z-[10] text-xs px-2 py-1 rounded-full bg-amber-100 text-amber-700 ring-1 ring-amber-200 pointer-events-none"
+                : "absolute right-3 top-3 z-[10] text-xs px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200 pointer-events-none"
+            }
+          >
+            {badgeLabel}
           </div>
         )}
 
