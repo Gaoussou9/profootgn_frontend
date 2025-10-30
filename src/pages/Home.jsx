@@ -2,7 +2,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../api/client";
 
-/* ---------- Helpers UI ---------- */
+/* ---------------------------------------------------------
+   UI helpers
+--------------------------------------------------------- */
 
 const Logo = ({ src, alt, size = "w-9 h-9 sm:w-10 sm:h-10" }) => (
   <img
@@ -67,38 +69,43 @@ const statusLabel = (s) => {
 
 const fmtDate = (iso) => (iso ? new Date(iso).toLocaleString() : "");
 
-/* =========================================================
-   useServerSyncedMinute
-   ========================================================= */
+/* ---------------------------------------------------------
+   Hook: minute live synchronisée avec le backend
+   (utilise live_phase_start + live_phase_offset envoyés par l’API)
+--------------------------------------------------------- */
 function useServerSyncedMinute(match) {
   const { status, live_phase_start, live_phase_offset, minute } = match || {};
-
   const [shownMinute, setShownMinute] = useState(null);
   const tickRef = useRef(null);
 
   useEffect(() => {
     const st = (status || "").toUpperCase();
 
+    // nettoie l'ancien timer
     if (tickRef.current) {
       clearInterval(tickRef.current);
       tickRef.current = null;
     }
 
+    // pause / mi-temps
     if (st === "HT" || st === "PAUSED") {
       setShownMinute(45);
       return;
     }
 
+    // terminé
     if (st === "FT" || st === "FINISHED") {
       setShownMinute(null);
       return;
     }
 
+    // pas live
     if (st !== "LIVE") {
       setShownMinute(null);
       return;
     }
 
+    // live mais pas d'infos de phase => on fige sur minute legacy
     const phaseStartISO = live_phase_start || null;
     const phaseOffset = Number(live_phase_offset);
     const hasPhaseInfo =
@@ -112,6 +119,7 @@ function useServerSyncedMinute(match) {
       return;
     }
 
+    // live + phase connue -> on calcule en temps réel
     const phaseStartMs = Date.parse(phaseStartISO);
 
     const computeMinuteNow = () => {
@@ -137,10 +145,8 @@ function useServerSyncedMinute(match) {
 }
 
 /* ---------------------------------------------------------
-   Formatteur du badge minute
-   - 1ère MT (offset 0) : 0'..44' puis 45’+
-   - 2ème MT (offset 45) : 45'..89' puis 90’+
-   --------------------------------------------------------- */
+   Affichage texte de la minute
+--------------------------------------------------------- */
 function formatMinuteForBadge(status, rawMinute, livePhaseOffset) {
   const st = (status || "").toUpperCase();
   if (st === "HT" || st === "PAUSED") return "HT";
@@ -152,16 +158,20 @@ function formatMinuteForBadge(status, rawMinute, livePhaseOffset) {
   const offset = Number(livePhaseOffset);
   const isH2 = Number.isFinite(offset) && offset >= 45;
 
+  // 2e mi-temps
   if (isH2) {
     if (n >= 90) return "90’+";
-    return `${n}'`; // 45', 46', ... 89'
-  } else {
-    if (n >= 45) return "45’+";
-    return `${n}'`; // 0'..44'
+    return `${n}'`; // 45', 46', ...
   }
+
+  // 1ère mi-temps
+  if (n >= 45) return "45’+";
+  return `${n}'`;
 }
 
-/* ---------- Barre de Journées (scrollable) ---------- */
+/* ---------------------------------------------------------
+   Barre de journées
+--------------------------------------------------------- */
 function MatchdayBar({ selected, onChange, max = 26 }) {
   const items = Array.from({ length: max }, (_, i) => i + 1);
   return (
@@ -195,7 +205,9 @@ function MatchdayBar({ selected, onChange, max = 26 }) {
   );
 }
 
-/* ---------- Carte Match ---------- */
+/* ---------------------------------------------------------
+   Carte Match
+--------------------------------------------------------- */
 function MatchCard({ m }) {
   const status = (m.status || "").toUpperCase();
   const isScheduled = status === "SCHEDULED" || status === "NOT_STARTED";
@@ -208,17 +220,18 @@ function MatchCard({ m }) {
     m.home_club_name || m.home || m.home_name || m.homeTeam || "Équipe 1";
   const awayName =
     m.away_club_name || m.away || m.away_name || m.awayTeam || "Équipe 2";
+
   const homeLogo =
     m.home_club_logo || m.home_logo || m.home_club?.logo || null;
   const awayLogo =
     m.away_club_logo || m.away_logo || m.away_club?.logo || null;
 
-  // minute calculée côté client à partir des infos serveur
+  // minute calculée côté client
   const liveMinute = useServerSyncedMinute(m);
   const minuteLabel = formatMinuteForBadge(
     status,
     liveMinute,
-    m.live_phase_offset // <-- clé pour distinguer 1ère/2e MT
+    m.live_phase_offset
   );
 
   return (
@@ -226,7 +239,7 @@ function MatchCard({ m }) {
       to={`/match/${m.id}`}
       className="group relative block bg-white rounded-2xl shadow-sm ring-1 ring-gray-100 p-4 hover:shadow-md transition"
     >
-      {/* Badge statut / chrono */}
+      {/* statut + minute */}
       <div
         className={`absolute right-3 top-3 text-[11px] px-2 py-1 rounded-full ring-1 ${statusClasses(
           status
@@ -239,16 +252,16 @@ function MatchCard({ m }) {
         {minuteLabel ? ` • ${minuteLabel}` : ""}
       </div>
 
-      {/* Badge journée */}
+      {/* journée */}
       {m.round_name && (
         <div className="absolute left-3 top-3 text-[11px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 ring-1 ring-gray-200">
           {m.round_name}
         </div>
       )}
 
-      {/* Grille clubs / score */}
+      {/* contenu */}
       <div className="grid grid-cols-[1fr,auto,4.5rem,auto,1fr] sm:grid-cols-[1fr,auto,5rem,auto,1fr] items-center gap-2 min-h-[68px]">
-        {/* Home */}
+        {/* domicile */}
         <div className="min-w-0 text-right pr-1">
           <span
             className="block team-name font-medium text-gray-900 no-underline group-hover:underline decoration-gray-300"
@@ -257,12 +270,11 @@ function MatchCard({ m }) {
             {homeName}
           </span>
         </div>
-
         <div className="justify-self-end">
           <Logo src={homeLogo} alt={homeName} />
         </div>
 
-        {/* Score */}
+        {/* score */}
         <div className="w-[4.5rem] sm:w-[5rem] text-center">
           {isScheduled ? (
             <span className="text-gray-500 font-semibold">vs</span>
@@ -281,11 +293,10 @@ function MatchCard({ m }) {
           )}
         </div>
 
+        {/* extérieur */}
         <div className="justify-self-start">
           <Logo src={awayLogo} alt={awayName} />
         </div>
-
-        {/* Away */}
         <div className="min-w-0 text-left pl-1">
           <span
             className="block team-name font-medium text-gray-900 no-underline group-hover:underline decoration-gray-300"
@@ -304,7 +315,10 @@ function MatchCard({ m }) {
   );
 }
 
-/* ---------- Utils ---------- */
+/* ---------------------------------------------------------
+   Utils
+--------------------------------------------------------- */
+
 const ROUND_KEY = "gn:home:round";
 
 function matchRoundNum(m) {
@@ -315,7 +329,7 @@ function matchRoundNum(m) {
 }
 
 function pickDefaultRound({ live = [], upcoming = [], recent = [] }) {
-  // priorité : journée où ça joue en live
+  // 1) s'il y a des lives, on prend la journée qui joue
   if (Array.isArray(live) && live.length) {
     const counts = new Map();
     for (const mm of live) {
@@ -329,17 +343,16 @@ function pickDefaultRound({ live = [], upcoming = [], recent = [] }) {
     if (one) return matchRoundNum(one);
   }
 
-  // sinon : la prochaine journée
+  // 2) sinon on prend la prochaine à jouer
   const now = Date.now();
   const ups = (upcoming || [])
     .map((mm) => ({ mm, t: Date.parse(mm.datetime) || Infinity }))
     .filter((x) => Number.isFinite(x.t))
     .sort((a, b) => a.t - b.t);
-
   const future = ups.find((x) => x.t >= now) || ups[0];
   if (future && matchRoundNum(future.mm) != null) return matchRoundNum(future.mm);
 
-  // sinon : la dernière jouée
+  // 3) sinon la dernière jouée
   const rec = (recent || [])
     .map((mm) => ({ mm, t: Date.parse(mm.datetime) || 0 }))
     .filter((x) => Number.isFinite(x.t))
@@ -349,23 +362,23 @@ function pickDefaultRound({ live = [], upcoming = [], recent = [] }) {
   return null;
 }
 
-/* ---------- Page d’accueil ---------- */
+/* ---------------------------------------------------------
+   Page d’accueil
+--------------------------------------------------------- */
 export default function Home() {
   const [round, setRound] = useState(null);
-
   const [live, setLive] = useState([]);
   const [upcoming, setUpcoming] = useState([]);
   const [recent, setRecent] = useState([]);
   const [suspended, setSuspended] = useState([]);
   const [postponed, setPostponed] = useState([]);
   const [canceled, setCanceled] = useState([]);
-
   const [loading, setLoad] = useState(true);
   const [error, setError] = useState(null);
 
   const defaultRoundSet = useRef(false);
 
-  // Charger round préféré
+  /* ----- charger round préféré ----- */
   useEffect(() => {
     const saved = localStorage.getItem(ROUND_KEY);
     if (saved !== null) {
@@ -374,9 +387,10 @@ export default function Home() {
     }
   }, []);
 
-  // Premier fetch
+  /* ----- premier fetch ----- */
   useEffect(() => {
     let stop = false;
+
     (async () => {
       setLoad(true);
       try {
@@ -384,7 +398,9 @@ export default function Home() {
           api.get("matches/live/").catch(() => ({ data: [] })),
           api
             .get("matches/upcoming/")
-            .catch(() => api.get("matches/?status=SCHEDULED&ordering=datetime&page_size=200")),
+            .catch(() =>
+              api.get("matches/?status=SCHEDULED&ordering=datetime&page_size=200")
+            ),
           api
             .get("matches/recent/")
             .catch(() => api.get("matches/?status=FT&ordering=-datetime&page_size=200")),
@@ -399,7 +415,8 @@ export default function Home() {
             .catch(() => ({ data: [] })),
         ]);
 
-        const getArr = (res) => (Array.isArray(res?.data) ? res.data : res?.data?.results) || [];
+        const getArr = (res) =>
+          (Array.isArray(res?.data) ? res.data : res?.data?.results) || [];
 
         if (!stop) {
           setLive(getArr(rLive));
@@ -416,31 +433,36 @@ export default function Home() {
         if (!stop) setLoad(false);
       }
     })();
+
     return () => {
       stop = true;
     };
   }, []);
 
-  // Poll LIVE 15s
+  /* ----- poll LIVE ----- */
   useEffect(() => {
     const id = setInterval(async () => {
       try {
         const r = await api.get("matches/live/");
         const arr = Array.isArray(r.data) ? r.data : r.data.results || [];
         setLive(arr);
-      } catch {}
+      } catch {
+        /* ignore */
+      }
     }, 15000);
     return () => clearInterval(id);
   }, []);
 
-  // Poll autres listes 30s
+  /* ----- poll autres listes ----- */
   useEffect(() => {
     const id = setInterval(async () => {
       try {
         const [rUpcoming, rRecent, rSusp, rPost, rCanc] = await Promise.all([
           api
             .get("matches/upcoming/")
-            .catch(() => api.get("matches/?status=SCHEDULED&ordering=datetime&page_size=200")),
+            .catch(() =>
+              api.get("matches/?status=SCHEDULED&ordering=datetime&page_size=200")
+            ),
           api
             .get("matches/recent/")
             .catch(() => api.get("matches/?status=FT&ordering=-datetime&page_size=200")),
@@ -454,18 +476,21 @@ export default function Home() {
             .get("matches/?status=CANCELED&ordering=-datetime&page_size=200")
             .catch(() => ({ data: [] })),
         ]);
-        const getArr = (res) => (Array.isArray(res?.data) ? res.data : res?.data?.results) || [];
+        const getArr = (res) =>
+          (Array.isArray(res?.data) ? res.data : res?.data?.results) || [];
         setUpcoming(getArr(rUpcoming));
         setRecent(getArr(rRecent));
         setSuspended(getArr(rSusp));
         setPostponed(getArr(rPost));
         setCanceled(getArr(rCanc));
-      } catch {}
+      } catch {
+        /* ignore */
+      }
     }, 30000);
     return () => clearInterval(id);
   }, []);
 
-  // Choix journée par défaut
+  /* ----- journée par défaut ----- */
   useEffect(() => {
     if (defaultRoundSet.current) return;
     const def = pickDefaultRound({ live, upcoming, recent });
@@ -482,21 +507,29 @@ export default function Home() {
     localStorage.setItem(ROUND_KEY, r === null ? "null" : String(r));
   };
 
-  // Fusion des listes
+  /* ----- fusion des listes ----- */
   const feed = useMemo(() => {
     const map = new Map();
-    const push = (list) => (list || []).forEach((m) => { if (!map.has(m.id)) map.set(m.id, m); });
-    push(live); push(upcoming); push(postponed); push(suspended); push(canceled); push(recent);
+    const push = (list) =>
+      (list || []).forEach((m) => {
+        if (!map.has(m.id)) map.set(m.id, m);
+      });
+    push(live);
+    push(upcoming);
+    push(postponed);
+    push(suspended);
+    push(canceled);
+    push(recent);
     return Array.from(map.values());
   }, [live, upcoming, postponed, suspended, canceled, recent]);
 
-  // Filtre par journée
+  /* ----- filtre par journée ----- */
   const feedFiltered = useMemo(() => {
     if (round == null) return feed;
     return feed.filter((m) => matchRoundNum(m) === Number(round));
   }, [feed, round]);
 
-  // Tri
+  /* ----- tri final ----- */
   const statusRank = (s) => {
     const uu = (s || "").toUpperCase();
     if (uu === "LIVE" || uu === "HT" || uu === "PAUSED") return 0;
@@ -518,47 +551,54 @@ export default function Home() {
       const rb = statusRank(b.status);
       if (ra !== rb) return ra - rb;
 
+      // live -> tri par minute
       if (ra === 0) {
         const am = Number.isFinite(Number(a.minute)) ? Number(a.minute) : 0;
         const bm = Number.isFinite(Number(b.minute)) ? Number(b.minute) : 0;
         return bm - am;
       }
-      if (ra === 1) {
-        return timeMs(b.datetime) - timeMs(a.datetime);
-      }
-      if (ra === 2) {
-        return timeMs(a.datetime) - timeMs(b.datetime);
-      }
+
+      // terminés -> plus récents en premier
+      if (ra === 1) return timeMs(b.datetime) - timeMs(a.datetime);
+
+      // programmés -> les plus proches d'abord
+      if (ra === 2) return timeMs(a.datetime) - timeMs(b.datetime);
+
+      // reste
       return timeMs(b.datetime) - timeMs(a.datetime);
     });
   }, [feedFiltered]);
 
- if (loading) {
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-white">
-      {/* Logo principal de l'app */}
-      <img
-        src="/DBTechLogo.jpeg"
-        alt="KanuSport"
-        className="w-28 h-28 object-contain mb-6"
-      />
-
-      {/* Texte ou slogan */}
-      <p className="text-sm text-gray-500 mb-10">Chargement…</p>
-
-      {/* Powered by DBTech */}
-      <div className="flex items-center gap-2 text-gray-400 text-xs mt-auto mb-6">
-        <span>Powered by DBTech</span>
+  /* ----- splash (chargement) ----- */
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-white">
+        {/* Logo principal */}
         <img
-          src="/DBTechLogo.jpeg"
-          alt="DBTech"
-          className="h-5 object-contain"
+          src="/KanuSportLogo.jpg"
+          alt="KanuSport"
+          className="w-28 h-28 object-contain mb-6"
         />
-      </div>
-    </div>
-  );
-}
 
+        <p className="text-sm text-gray-500 mb-10">Chargement…</p>
+
+        {/* footer powered by */}
+        <div className="flex items-center gap-2 text-gray-400 text-xs mt-auto mb-6">
+          <span>Powered by DBTech</span>
+          <img
+            src="/DBTechLogo.jpeg"
+            alt="DBTech"
+            className="h-5 object-contain"
+          />
+        </div>
+      </div>
+    );
+  }
+
+  /* ----- rendu principal ----- */
+  if (error) {
+    return <p className="px-3 text-red-600">Erreur : {error}</p>;
+  }
 
   return (
     <div className="mx-auto max-w-[480px] px-3 pb-24">
