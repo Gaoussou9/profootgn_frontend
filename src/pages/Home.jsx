@@ -533,8 +533,32 @@ export default function Home() {
     });
   }, [feedFiltered]);
 
-  if (loading) return <p className="px-3">Chargement…</p>;
-  if (error) return <p className="px-3 text-red-600">Erreur : {error}</p>;
+ if (loading) {
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-white">
+      {/* Logo principal de l'app */}
+      <img
+        src="/DBTechLogo.jpeg"
+        alt="KanuSport"
+        className="w-28 h-28 object-contain mb-6"
+      />
+
+      {/* Texte ou slogan */}
+      <p className="text-sm text-gray-500 mb-10">Chargement…</p>
+
+      {/* Powered by DBTech */}
+      <div className="flex items-center gap-2 text-gray-400 text-xs mt-auto mb-6">
+        <span>Powered by DBTech</span>
+        <img
+          src="/DBTechLogo.jpeg"
+          alt="DBTech"
+          className="h-5 object-contain"
+        />
+      </div>
+    </div>
+  );
+}
+
 
   return (
     <div className="mx-auto max-w-[480px] px-3 pb-24">
