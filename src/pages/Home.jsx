@@ -528,7 +528,6 @@ export default function Home() {
           className="w-112 h-112 object-contain mb-5"
         />
 
-        <p className="text-sm text-gray-500 mb-10">Chargement…</p>
 
         {/* powered by dbtech en bas */}
         <div className="absolute bottom-6 inset-x-0 flex justify-center">
