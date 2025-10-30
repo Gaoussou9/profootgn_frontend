@@ -69,61 +69,36 @@ const fmtDate = (iso) => (iso ? new Date(iso).toLocaleString() : "");
 
 /* =========================================================
    useServerSyncedMinute
-   ---------------------------------------------------------
-   On calcule la "minute live" à partir des infos serveur :
-   - status
-   - live_phase_start (ISO)
-   - live_phase_offset (0 ou 45)
-   - minute (fallback legacy pour sécurité)
-
-   Règles d'affichage attendues:
-   - SCHEDULED -> pas de minute
-   - LIVE 1ère MT -> 0',1',2'... puis à partir de 45 -> "45’+"
-   - LIVE 2ème MT -> 46',47'... puis à partir de 90 -> "90’+"
-   - HT / PAUSED -> "HT"
-   - FINISHED/FT -> pas besoin d'animer, plus de minute live dans le badge (on peut afficher le statut seulement)
    ========================================================= */
 function useServerSyncedMinute(match) {
   const { status, live_phase_start, live_phase_offset, minute } = match || {};
 
   const [shownMinute, setShownMinute] = useState(null);
-
   const tickRef = useRef(null);
 
   useEffect(() => {
     const st = (status || "").toUpperCase();
 
-    // Arrêt propre du timer précédent
     if (tickRef.current) {
       clearInterval(tickRef.current);
       tickRef.current = null;
     }
 
-    // Cas mi-temps/pause => figé à 45
     if (st === "HT" || st === "PAUSED") {
       setShownMinute(45);
       return;
     }
 
-    // Match terminé => on n'affiche plus de chrono live
     if (st === "FT" || st === "FINISHED") {
       setShownMinute(null);
       return;
     }
 
-    // Pas LIVE => pas de chrono
     if (st !== "LIVE") {
       setShownMinute(null);
       return;
     }
 
-    // LIVE => on doit animer à partir du serveur
-    // On part des champs envoyés par l'API:
-    //   live_phase_start (ISO string) : début période
-    //   live_phase_offset (number, genre 0 ou 45)
-    //
-    // Si le backend n'a pas pu envoyer ces infos (None), on retombe
-    // sur minute legacy reçue dans le match.
     const phaseStartISO = live_phase_start || null;
     const phaseOffset = Number(live_phase_offset);
     const hasPhaseInfo =
@@ -132,7 +107,6 @@ function useServerSyncedMinute(match) {
       Number.isFinite(phaseOffset);
 
     if (!hasPhaseInfo) {
-      // fallback: on fige sur match.minute tel quel
       const base = Number(minute);
       setShownMinute(Number.isFinite(base) ? base : null);
       return;
@@ -141,16 +115,13 @@ function useServerSyncedMinute(match) {
     const phaseStartMs = Date.parse(phaseStartISO);
 
     const computeMinuteNow = () => {
-      const nowMs = Date.now();
-      // minutes écoulées dans la phase courante :
-      const diffMs = nowMs - phaseStartMs;
+      const diffMs = Date.now() - phaseStartMs;
       const playedThisPhase = Math.floor(diffMs / 60000);
       let mNow = phaseOffset + playedThisPhase;
       if (mNow < 0) mNow = 0;
       setShownMinute(mNow);
     };
 
-    // tick immédiat + intervalle
     computeMinuteNow();
     tickRef.current = setInterval(computeMinuteNow, 1000);
 
@@ -165,26 +136,29 @@ function useServerSyncedMinute(match) {
   return shownMinute;
 }
 
-// Formatteur texte badge chrono
-function formatMinuteForBadge(status, rawMinute) {
+/* ---------------------------------------------------------
+   Formatteur du badge minute
+   - 1ère MT (offset 0) : 0'..44' puis 45’+
+   - 2ème MT (offset 45) : 45'..89' puis 90’+
+   --------------------------------------------------------- */
+function formatMinuteForBadge(status, rawMinute, livePhaseOffset) {
   const st = (status || "").toUpperCase();
+  if (st === "HT" || st === "PAUSED") return "HT";
+  if (st !== "LIVE") return null;
 
-  if (st === "HT" || st === "PAUSED") {
-    return "HT";
-  }
-  if (st !== "LIVE") {
-    return null;
-  }
-
-  if (!Number.isFinite(Number(rawMinute))) return null;
   const n = Number(rawMinute);
+  if (!Number.isFinite(n)) return null;
 
-  // Zones + :
-  // 45+ pour fin 1ère MT / début 2ème
-  if (n >= 90) return "90’+";
-  if (n >= 45) return "45’+";
+  const offset = Number(livePhaseOffset);
+  const isH2 = Number.isFinite(offset) && offset >= 45;
 
-  return `${n}'`;
+  if (isH2) {
+    if (n >= 90) return "90’+";
+    return `${n}'`; // 45', 46', ... 89'
+  } else {
+    if (n >= 45) return "45’+";
+    return `${n}'`; // 0'..44'
+  }
 }
 
 /* ---------- Barre de Journées (scrollable) ---------- */
@@ -224,26 +198,16 @@ function MatchdayBar({ selected, onChange, max = 26 }) {
 /* ---------- Carte Match ---------- */
 function MatchCard({ m }) {
   const status = (m.status || "").toUpperCase();
-  const isScheduled =
-    status === "SCHEDULED" || status === "NOT_STARTED";
+  const isScheduled = status === "SCHEDULED" || status === "NOT_STARTED";
   const isLive = status === "LIVE";
   const isSuspended = status === "SUSPENDED";
   const isPostponed = status === "POSTPONED";
-  const isCanceled =
-    status === "CANCELED" || status === "CANCELLED";
+  const isCanceled = status === "CANCELED" || status === "CANCELLED";
 
   const homeName =
-    m.home_club_name ||
-    m.home ||
-    m.home_name ||
-    m.homeTeam ||
-    "Équipe 1";
+    m.home_club_name || m.home || m.home_name || m.homeTeam || "Équipe 1";
   const awayName =
-    m.away_club_name ||
-    m.away ||
-    m.away_name ||
-    m.awayTeam ||
-    "Équipe 2";
+    m.away_club_name || m.away || m.away_name || m.awayTeam || "Équipe 2";
   const homeLogo =
     m.home_club_logo || m.home_logo || m.home_club?.logo || null;
   const awayLogo =
@@ -251,7 +215,11 @@ function MatchCard({ m }) {
 
   // minute calculée côté client à partir des infos serveur
   const liveMinute = useServerSyncedMinute(m);
-  const minuteLabel = formatMinuteForBadge(status, liveMinute);
+  const minuteLabel = formatMinuteForBadge(
+    status,
+    liveMinute,
+    m.live_phase_offset // <-- clé pour distinguer 1ère/2e MT
+  );
 
   return (
     <Link
@@ -280,7 +248,7 @@ function MatchCard({ m }) {
 
       {/* Grille clubs / score */}
       <div className="grid grid-cols-[1fr,auto,4.5rem,auto,1fr] sm:grid-cols-[1fr,auto,5rem,auto,1fr] items-center gap-2 min-h-[68px]">
-        {/* Home side */}
+        {/* Home */}
         <div className="min-w-0 text-right pr-1">
           <span
             className="block team-name font-medium text-gray-900 no-underline group-hover:underline decoration-gray-300"
@@ -303,9 +271,7 @@ function MatchCard({ m }) {
           ) : (
             <span
               className={`text-xl sm:text-2xl font-extrabold leading-none tabular-nums ${
-                isSuspended || isCanceled
-                  ? "line-through text-gray-400"
-                  : ""
+                isSuspended || isCanceled ? "line-through text-gray-400" : ""
               }`}
             >
               {m.home_score}
@@ -319,7 +285,7 @@ function MatchCard({ m }) {
           <Logo src={awayLogo} alt={awayName} />
         </div>
 
-        {/* Away side */}
+        {/* Away */}
         <div className="min-w-0 text-left pl-1">
           <span
             className="block team-name font-medium text-gray-900 no-underline group-hover:underline decoration-gray-300"
@@ -371,16 +337,14 @@ function pickDefaultRound({ live = [], upcoming = [], recent = [] }) {
     .sort((a, b) => a.t - b.t);
 
   const future = ups.find((x) => x.t >= now) || ups[0];
-  if (future && matchRoundNum(future.mm) != null)
-    return matchRoundNum(future.mm);
+  if (future && matchRoundNum(future.mm) != null) return matchRoundNum(future.mm);
 
   // sinon : la dernière jouée
   const rec = (recent || [])
     .map((mm) => ({ mm, t: Date.parse(mm.datetime) || 0 }))
     .filter((x) => Number.isFinite(x.t))
     .sort((a, b) => b.t - a.t)[0];
-  if (rec && matchRoundNum(rec.mm) != null)
-    return matchRoundNum(rec.mm);
+  if (rec && matchRoundNum(rec.mm) != null) return matchRoundNum(rec.mm);
 
   return null;
 }
@@ -401,7 +365,7 @@ export default function Home() {
 
   const defaultRoundSet = useRef(false);
 
-  // Charger round préféré depuis localStorage
+  // Charger round préféré
   useEffect(() => {
     const saved = localStorage.getItem(ROUND_KEY);
     if (saved !== null) {
@@ -410,50 +374,32 @@ export default function Home() {
     }
   }, []);
 
-  // Premier fetch (live / upcoming / recent / états spéciaux)
+  // Premier fetch
   useEffect(() => {
     let stop = false;
     (async () => {
       setLoad(true);
       try {
-        const [rLive, rUpcoming, rRecent, rSusp, rPost, rCanc] =
-          await Promise.all([
-            api.get("matches/live/").catch(() => ({ data: [] })),
-            api
-              .get("matches/upcoming/")
-              .catch(() =>
-                api.get(
-                  "matches/?status=SCHEDULED&ordering=datetime&page_size=200"
-                )
-              ),
-            api
-              .get("matches/recent/")
-              .catch(() =>
-                api.get(
-                  "matches/?status=FT&ordering=-datetime&page_size=200"
-                )
-              ),
-            api
-              .get(
-                "matches/?status=SUSPENDED&ordering=-datetime&page_size=200"
-              )
-              .catch(() => ({ data: [] })),
-            api
-              .get(
-                "matches/?status=POSTPONED&ordering=-datetime&page_size=200"
-              )
-              .catch(() => ({ data: [] })),
-            api
-              .get(
-                "matches/?status=CANCELED&ordering=-datetime&page_size=200"
-              )
-              .catch(() => ({ data: [] })),
-          ]);
+        const [rLive, rUpcoming, rRecent, rSusp, rPost, rCanc] = await Promise.all([
+          api.get("matches/live/").catch(() => ({ data: [] })),
+          api
+            .get("matches/upcoming/")
+            .catch(() => api.get("matches/?status=SCHEDULED&ordering=datetime&page_size=200")),
+          api
+            .get("matches/recent/")
+            .catch(() => api.get("matches/?status=FT&ordering=-datetime&page_size=200")),
+          api
+            .get("matches/?status=SUSPENDED&ordering=-datetime&page_size=200")
+            .catch(() => ({ data: [] })),
+          api
+            .get("matches/?status=POSTPONED&ordering=-datetime&page_size=200")
+            .catch(() => ({ data: [] })),
+          api
+            .get("matches/?status=CANCELED&ordering=-datetime&page_size=200")
+            .catch(() => ({ data: [] })),
+        ]);
 
-        const getArr = (res) =>
-          (Array.isArray(res?.data)
-            ? res.data
-            : res?.data?.results) || [];
+        const getArr = (res) => (Array.isArray(res?.data) ? res.data : res?.data?.results) || [];
 
         if (!stop) {
           setLive(getArr(rLive));
@@ -475,80 +421,54 @@ export default function Home() {
     };
   }, []);
 
-  // Poll LIVE toutes les 15s
+  // Poll LIVE 15s
   useEffect(() => {
     const id = setInterval(async () => {
       try {
         const r = await api.get("matches/live/");
         const arr = Array.isArray(r.data) ? r.data : r.data.results || [];
         setLive(arr);
-      } catch {
-        /* ignore */
-      }
+      } catch {}
     }, 15000);
     return () => clearInterval(id);
   }, []);
 
-  // Poll autres listes toutes les 30s
+  // Poll autres listes 30s
   useEffect(() => {
     const id = setInterval(async () => {
       try {
-        const [rUpcoming, rRecent, rSusp, rPost, rCanc] =
-          await Promise.all([
-            api
-              .get("matches/upcoming/")
-              .catch(() =>
-                api.get(
-                  "matches/?status=SCHEDULED&ordering=datetime&page_size=200"
-                )
-              ),
-            api
-              .get("matches/recent/")
-              .catch(() =>
-                api.get(
-                  "matches/?status=FT&ordering=-datetime&page_size=200"
-                )
-              ),
-            api
-              .get(
-                "matches/?status=SUSPENDED&ordering=-datetime&page_size=200"
-              )
-              .catch(() => ({ data: [] })),
-            api
-              .get(
-                "matches/?status=POSTPONED&ordering=-datetime&page_size=200"
-              )
-              .catch(() => ({ data: [] })),
-            api
-              .get(
-                "matches/?status=CANCELED&ordering=-datetime&page_size=200"
-              )
-              .catch(() => ({ data: [] })),
-          ]);
-        const getArr = (res) =>
-          (Array.isArray(res?.data)
-            ? res.data
-            : res?.data?.results) || [];
+        const [rUpcoming, rRecent, rSusp, rPost, rCanc] = await Promise.all([
+          api
+            .get("matches/upcoming/")
+            .catch(() => api.get("matches/?status=SCHEDULED&ordering=datetime&page_size=200")),
+          api
+            .get("matches/recent/")
+            .catch(() => api.get("matches/?status=FT&ordering=-datetime&page_size=200")),
+          api
+            .get("matches/?status=SUSPENDED&ordering=-datetime&page_size=200")
+            .catch(() => ({ data: [] })),
+          api
+            .get("matches/?status=POSTPONED&ordering=-datetime&page_size=200")
+            .catch(() => ({ data: [] })),
+          api
+            .get("matches/?status=CANCELED&ordering=-datetime&page_size=200")
+            .catch(() => ({ data: [] })),
+        ]);
+        const getArr = (res) => (Array.isArray(res?.data) ? res.data : res?.data?.results) || [];
         setUpcoming(getArr(rUpcoming));
         setRecent(getArr(rRecent));
         setSuspended(getArr(rSusp));
         setPostponed(getArr(rPost));
         setCanceled(getArr(rCanc));
-      } catch {
-        /* ignore */
-      }
+      } catch {}
     }, 30000);
     return () => clearInterval(id);
   }, []);
 
-  // Choisir la journée par défaut
+  // Choix journée par défaut
   useEffect(() => {
     if (defaultRoundSet.current) return;
-    const def = pickDefaultRound({
-      live,
-      upcoming,
-      recent,
-    });
+    const def = pickDefaultRound({ live, upcoming, recent });
     if (def !== null && def !== undefined) {
       setRound(def);
       defaultRoundSet.current = true;
@@ -562,31 +482,21 @@ export default function Home() {
     localStorage.setItem(ROUND_KEY, r === null ? "null" : String(r));
   };
 
-  // Fusionner toutes les listes
+  // Fusion des listes
   const feed = useMemo(() => {
     const map = new Map();
-    const push = (list) =>
-      (list || []).forEach((m) => {
-        if (!map.has(m.id)) map.set(m.id, m);
-      });
-    push(live);
-    push(upcoming);
-    push(postponed);
-    push(suspended);
-    push(canceled);
-    push(recent);
+    const push = (list) => (list || []).forEach((m) => { if (!map.has(m.id)) map.set(m.id, m); });
+    push(live); push(upcoming); push(postponed); push(suspended); push(canceled); push(recent);
     return Array.from(map.values());
   }, [live, upcoming, postponed, suspended, canceled, recent]);
 
-  // Filtrer par journée sélectionnée
+  // Filtre par journée
   const feedFiltered = useMemo(() => {
     if (round == null) return feed;
-    return feed.filter(
-      (m) => matchRoundNum(m) === Number(round)
-    );
+    return feed.filter((m) => matchRoundNum(m) === Number(round));
   }, [feed, round]);
 
-  // Aide pour trier l'affichage
+  // Tri
   const statusRank = (s) => {
     const uu = (s || "").toUpperCase();
     if (uu === "LIVE" || uu === "HT" || uu === "PAUSED") return 0;
@@ -602,59 +512,38 @@ export default function Home() {
     return Number.isNaN(t) ? 0 : t;
   };
 
-  // Tri (LIVE en haut, puis récents, etc.)
   const feedSorted = useMemo(() => {
     return [...feedFiltered].sort((a, b) => {
       const ra = statusRank(a.status);
       const rb = statusRank(b.status);
       if (ra !== rb) return ra - rb;
 
-      // Pour LIVE : garder l'ordre par minute courante (desc)
       if (ra === 0) {
-        const am = Number.isFinite(Number(a.minute))
-          ? Number(a.minute)
-          : 0;
-        const bm = Number.isFinite(Number(b.minute))
-          ? Number(b.minute)
-          : 0;
+        const am = Number.isFinite(Number(a.minute)) ? Number(a.minute) : 0;
+        const bm = Number.isFinite(Number(b.minute)) ? Number(b.minute) : 0;
         return bm - am;
       }
-
-      // Pour FT : les plus récents en premier
       if (ra === 1) {
         return timeMs(b.datetime) - timeMs(a.datetime);
       }
-
-      // Pour SCHEDULED : les plus proches d'abord
       if (ra === 2) {
         return timeMs(a.datetime) - timeMs(b.datetime);
       }
-
-      // Fallback
       return timeMs(b.datetime) - timeMs(a.datetime);
     });
   }, [feedFiltered]);
 
   if (loading) return <p className="px-3">Chargement…</p>;
-  if (error)
-    return (
-      <p className="px-3 text-red-600">Erreur : {error}</p>
-    );
+  if (error) return <p className="px-3 text-red-600">Erreur : {error}</p>;
 
   return (
     <div className="mx-auto max-w-[480px] px-3 pb-24">
       <section className="space-y-4">
         <header className="flex items-baseline justify-between">
-          <h1 className="text-2xl font-bold">
-            Ligue 1 Guinéenne
-          </h1>
+          <h1 className="text-2xl font-bold">Ligue 1 Guinéenne</h1>
         </header>
 
-        <MatchdayBar
-          selected={round}
-          onChange={handleRoundChange}
-          max={26}
-        />
+        <MatchdayBar selected={round} onChange={handleRoundChange} max={26} />
 
         <ul className="grid gap-4">
           {feedSorted.map((m) => (
