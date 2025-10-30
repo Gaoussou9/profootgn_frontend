@@ -523,7 +523,7 @@ export default function Home() {
       <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-white">
         {/* logo de l'app */}
         <img
-          src="/KanuSportLogo.jpg"
+          src="/KanuSportLogo1.jpg"
           alt="KanuSport"
           className="w-112 h-112 object-contain mb-5"
         />
