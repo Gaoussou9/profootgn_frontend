@@ -525,7 +525,7 @@ export default function Home() {
         <img
           src="/KanuSportLogo1.jpg"
           alt="KanuSport"
-          className="w-112 h-112 object-contain mb-10"
+          className="w-112 h-112 object-contain mb-20"
         />
 
 
