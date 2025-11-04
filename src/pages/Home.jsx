@@ -301,6 +301,7 @@ function MatchCard({ m }) {
 
 /* ---------- Utils ---------- */
 const ROUND_KEY = "gn:home:round";
+const DEFAULT_PAGE_SIZE = 200;
 
 function matchRoundNum(m) {
   if (m?.round_number != null) return Number(m.round_number);
@@ -365,39 +366,52 @@ export default function Home() {
     }
   }, []);
 
+  // Helper pour extraire array depuis réponse API (support results pagination)
+  const getArr = (res) => (Array.isArray(res?.data) ? res.data : res?.data?.results) || [];
+
+  /* --- Premier fetch (force page_size) --- */
   useEffect(() => {
     let stop = false;
     (async () => {
       setLoad(true);
       try {
         const [rLive, rUpcoming, rRecent, rSusp, rPost, rCanc] = await Promise.all([
-          api.get("matches/live/").catch(() => ({ data: [] })),
-          api
-            .get("matches/upcoming/")
-            .catch(() => api.get("matches/?status=SCHEDULED&ordering=datetime&page_size=200")),
-          api
-            .get("matches/recent/")
-            .catch(() => api.get("matches/?status=FT&ordering=-datetime&page_size=200")),
-          api
-            .get("matches/?status=SUSPENDED&ordering=-datetime&page_size=200")
-            .catch(() => ({ data: [] })),
-          api
-            .get("matches/?status=POSTPONED&ordering=-datetime&page_size=200")
-            .catch(() => ({ data: [] })),
-          api
-            .get("matches/?status=CANCELED&ordering=-datetime&page_size=200")
-            .catch(() => ({ data: [] })),
+          api.get(`matches/live/?page_size=${DEFAULT_PAGE_SIZE}`).catch(() => ({ data: [] })),
+          api.get(`matches/upcoming/?page_size=${DEFAULT_PAGE_SIZE}`).catch(() =>
+            api.get(`matches/?status=SCHEDULED&ordering=datetime&page_size=${DEFAULT_PAGE_SIZE}`)
+          ),
+          api.get(`matches/recent/?page_size=${DEFAULT_PAGE_SIZE}`).catch(() =>
+            api.get(`matches/?status=FT&ordering=-datetime&page_size=${DEFAULT_PAGE_SIZE}`)
+          ),
+          api.get(`matches/?status=SUSPENDED&ordering=-datetime&page_size=${DEFAULT_PAGE_SIZE}`).catch(() => ({ data: [] })),
+          api.get(`matches/?status=POSTPONED&ordering=-datetime&page_size=${DEFAULT_PAGE_SIZE}`).catch(() => ({ data: [] })),
+          api.get(`matches/?status=CANCELED&ordering=-datetime&page_size=${DEFAULT_PAGE_SIZE}`).catch(() => ({ data: [] })),
         ]);
 
-        const getArr = (res) => (Array.isArray(res?.data) ? res.data : res?.data?.results) || [];
-
         if (!stop) {
-          setLive(getArr(rLive));
-          setUpcoming(getArr(rUpcoming));
-          setRecent(getArr(rRecent));
-          setSuspended(getArr(rSusp));
-          setPostponed(getArr(rPost));
-          setCanceled(getArr(rCanc));
+          const liveArr = getArr(rLive);
+          const upcomingArr = getArr(rUpcoming);
+          const recentArr = getArr(rRecent);
+          const suspArr = getArr(rSusp);
+          const postArr = getArr(rPost);
+          const cancArr = getArr(rCanc);
+
+          // debug pour voir ce que renvoie réellement l'API
+          console.debug("initial fetch sizes:", {
+            live: liveArr.length,
+            upcoming: upcomingArr.length,
+            recent: recentArr.length,
+            suspended: suspArr.length,
+            postponed: postArr.length,
+            canceled: cancArr.length,
+          });
+
+          setLive(liveArr);
+          setUpcoming(upcomingArr);
+          setRecent(recentArr);
+          setSuspended(suspArr);
+          setPostponed(postArr);
+          setCanceled(cancArr);
           setError(null);
         }
       } catch (e) {
@@ -411,44 +425,59 @@ export default function Home() {
     };
   }, []);
 
+  // Poll LIVE toutes les 15s (force page_size)
   useEffect(() => {
     const id = setInterval(async () => {
       try {
-        const r = await api.get("matches/live/");
+        const r = await api.get(`matches/live/?page_size=${DEFAULT_PAGE_SIZE}`);
         const arr = Array.isArray(r.data) ? r.data : r.data.results || [];
+        console.debug("poll live size:", arr.length);
         setLive(arr);
-      } catch {}
+      } catch (err) {
+        console.debug("poll live error", err);
+      }
     }, 15000);
     return () => clearInterval(id);
   }, []);
 
+  // Poll autres listes toutes les 30s (force page_size)
   useEffect(() => {
     const id = setInterval(async () => {
       try {
         const [rUpcoming, rRecent, rSusp, rPost, rCanc] = await Promise.all([
-          api
-            .get("matches/upcoming/")
-            .catch(() => api.get("matches/?status=SCHEDULED&ordering=datetime&page_size=200")),
-          api
-            .get("matches/recent/")
-            .catch(() => api.get("matches/?status=FT&ordering=-datetime&page_size=200")),
-          api
-            .get("matches/?status=SUSPENDED&ordering=-datetime&page_size=200")
-            .catch(() => ({ data: [] })),
-          api
-            .get("matches/?status=POSTPONED&ordering=-datetime&page_size=200")
-            .catch(() => ({ data: [] })),
-          api
-            .get("matches/?status=CANCELED&ordering=-datetime&page_size=200")
-            .catch(() => ({ data: [] })),
+          api.get(`matches/upcoming/?page_size=${DEFAULT_PAGE_SIZE}`).catch(() =>
+            api.get(`matches/?status=SCHEDULED&ordering=datetime&page_size=${DEFAULT_PAGE_SIZE}`)
+          ),
+          api.get(`matches/recent/?page_size=${DEFAULT_PAGE_SIZE}`).catch(() =>
+            api.get(`matches/?status=FT&ordering=-datetime&page_size=${DEFAULT_PAGE_SIZE}`)
+          ),
+          api.get(`matches/?status=SUSPENDED&ordering=-datetime&page_size=${DEFAULT_PAGE_SIZE}`).catch(() => ({ data: [] })),
+          api.get(`matches/?status=POSTPONED&ordering=-datetime&page_size=${DEFAULT_PAGE_SIZE}`).catch(() => ({ data: [] })),
+          api.get(`matches/?status=CANCELED&ordering=-datetime&page_size=${DEFAULT_PAGE_SIZE}`).catch(() => ({ data: [] })),
         ]);
-        const getArr = (res) => (Array.isArray(res?.data) ? res.data : res?.data?.results) || [];
-        setUpcoming(getArr(rUpcoming));
-        setRecent(getArr(rRecent));
-        setSuspended(getArr(rSusp));
-        setPostponed(getArr(rPost));
-        setCanceled(getArr(rCanc));
-      } catch {}
+
+        const upcomingArr = getArr(rUpcoming);
+        const recentArr = getArr(rRecent);
+        const suspArr = getArr(rSusp);
+        const postArr = getArr(rPost);
+        const cancArr = getArr(rCanc);
+
+        console.debug("poll 30s sizes:", {
+          upcoming: upcomingArr.length,
+          recent: recentArr.length,
+          suspended: suspArr.length,
+          postponed: postArr.length,
+          canceled: cancArr.length,
+        });
+
+        setUpcoming(upcomingArr);
+        setRecent(recentArr);
+        setSuspended(suspArr);
+        setPostponed(postArr);
+        setCanceled(cancArr);
+      } catch (err) {
+        console.debug("poll 30s error", err);
+      }
     }, 30000);
     return () => clearInterval(id);
   }, []);
@@ -471,8 +500,18 @@ export default function Home() {
 
   const feed = useMemo(() => {
     const map = new Map();
-    const push = (list) => (list || []).forEach((m) => { if (!map.has(m.id)) map.set(m.id, m); });
-    push(live); push(upcoming); push(postponed); push(suspended); push(canceled); push(recent);
+    const push = (list) =>
+      (list || []).forEach((m) => {
+        // debug rapide si tu veux vérifier les ids :
+        // console.debug("push id:", m.id, "round:", matchRoundNum(m));
+        if (!map.has(m.id)) map.set(m.id, m);
+      });
+    push(live);
+    push(upcoming);
+    push(postponed);
+    push(suspended);
+    push(canceled);
+    push(recent);
     return Array.from(map.values());
   }, [live, upcoming, postponed, suspended, canceled, recent]);
 
@@ -527,7 +566,6 @@ export default function Home() {
           alt="KanuSport"
           className="w-112 h-112 object-contain mb-20"
         />
-
 
         {/* powered by dbtech en bas */}
         <div className="absolute bottom-6 inset-x-0 flex justify-center">
