@@ -84,7 +84,7 @@ function useServerSyncedMinute(match) {
       tickRef.current = null;
     }
 
-    // mi-temps
+    // mi-temps/pause
     if (st === "HT" || st === "PAUSED") {
       setShownMinute(45);
       return;
@@ -301,7 +301,6 @@ function MatchCard({ m }) {
 
 /* ---------- Utils ---------- */
 const ROUND_KEY = "gn:home:round";
-const DEFAULT_PAGE_SIZE = 200;
 
 function matchRoundNum(m) {
   if (m?.round_number != null) return Number(m.round_number);
@@ -311,6 +310,7 @@ function matchRoundNum(m) {
 }
 
 function pickDefaultRound({ live = [], upcoming = [], recent = [] }) {
+  // priorité : journée où ça joue en live
   if (Array.isArray(live) && live.length) {
     const counts = new Map();
     for (const mm of live) {
@@ -324,6 +324,7 @@ function pickDefaultRound({ live = [], upcoming = [], recent = [] }) {
     if (one) return matchRoundNum(one);
   }
 
+  // sinon : la prochaine journée parmi tous les upcoming (on suppose upcoming contient tous les SCHEDULED)
   const now = Date.now();
   const ups = (upcoming || [])
     .map((mm) => ({ mm, t: Date.parse(mm.datetime) || Infinity }))
@@ -333,6 +334,7 @@ function pickDefaultRound({ live = [], upcoming = [], recent = [] }) {
   const future = ups.find((x) => x.t >= now) || ups[0];
   if (future && matchRoundNum(future.mm) != null) return matchRoundNum(future.mm);
 
+  // sinon : la dernière jouée
   const rec = (recent || [])
     .map((mm) => ({ mm, t: Date.parse(mm.datetime) || 0 }))
     .filter((x) => Number.isFinite(x.t))
@@ -358,6 +360,7 @@ export default function Home() {
 
   const defaultRoundSet = useRef(false);
 
+  // Charger round préféré
   useEffect(() => {
     const saved = localStorage.getItem(ROUND_KEY);
     if (saved !== null) {
@@ -366,52 +369,33 @@ export default function Home() {
     }
   }, []);
 
-  // Helper pour extraire array depuis réponse API (support results pagination)
-  const getArr = (res) => (Array.isArray(res?.data) ? res.data : res?.data?.results) || [];
-
-  /* --- Premier fetch (force page_size) --- */
+  // Premier fetch
   useEffect(() => {
     let stop = false;
     (async () => {
       setLoad(true);
       try {
+        // IMPORTANT: on demande explicitement des page_size élevés pour éviter la pagination par défaut
         const [rLive, rUpcoming, rRecent, rSusp, rPost, rCanc] = await Promise.all([
-          api.get(`matches/live/?page_size=${DEFAULT_PAGE_SIZE}`).catch(() => ({ data: [] })),
-          api.get(`matches/upcoming/?page_size=${DEFAULT_PAGE_SIZE}`).catch(() =>
-            api.get(`matches/?status=SCHEDULED&ordering=datetime&page_size=${DEFAULT_PAGE_SIZE}`)
-          ),
-          api.get(`matches/recent/?page_size=${DEFAULT_PAGE_SIZE}`).catch(() =>
-            api.get(`matches/?status=FT&ordering=-datetime&page_size=${DEFAULT_PAGE_SIZE}`)
-          ),
-          api.get(`matches/?status=SUSPENDED&ordering=-datetime&page_size=${DEFAULT_PAGE_SIZE}`).catch(() => ({ data: [] })),
-          api.get(`matches/?status=POSTPONED&ordering=-datetime&page_size=${DEFAULT_PAGE_SIZE}`).catch(() => ({ data: [] })),
-          api.get(`matches/?status=CANCELED&ordering=-datetime&page_size=${DEFAULT_PAGE_SIZE}`).catch(() => ({ data: [] })),
+          api.get("matches/live/").catch(() => ({ data: [] })),
+          // -> récupère tous les SCHEDULED, même si datetime < now (côté backend certains endpoints peuvent filtrer)
+          api.get("matches/?status=SCHEDULED&ordering=datetime&page_size=1000").catch(() => ({ data: [] })),
+          // -> récupérer un grand nombre de FT pour l'historique
+          api.get("matches/?status=FT&ordering=-datetime&page_size=1000").catch(() => ({ data: [] })),
+          api.get("matches/?status=SUSPENDED&ordering=-datetime&page_size=1000").catch(() => ({ data: [] })),
+          api.get("matches/?status=POSTPONED&ordering=-datetime&page_size=1000").catch(() => ({ data: [] })),
+          api.get("matches/?status=CANCELED&ordering=-datetime&page_size=1000").catch(() => ({ data: [] })),
         ]);
 
+        const getArr = (res) => (Array.isArray(res?.data) ? res.data : res?.data?.results) || [];
+
         if (!stop) {
-          const liveArr = getArr(rLive);
-          const upcomingArr = getArr(rUpcoming);
-          const recentArr = getArr(rRecent);
-          const suspArr = getArr(rSusp);
-          const postArr = getArr(rPost);
-          const cancArr = getArr(rCanc);
-
-          // debug pour voir ce que renvoie réellement l'API
-          console.debug("initial fetch sizes:", {
-            live: liveArr.length,
-            upcoming: upcomingArr.length,
-            recent: recentArr.length,
-            suspended: suspArr.length,
-            postponed: postArr.length,
-            canceled: cancArr.length,
-          });
-
-          setLive(liveArr);
-          setUpcoming(upcomingArr);
-          setRecent(recentArr);
-          setSuspended(suspArr);
-          setPostponed(postArr);
-          setCanceled(cancArr);
+          setLive(getArr(rLive));
+          setUpcoming(getArr(rUpcoming));
+          setRecent(getArr(rRecent));
+          setSuspended(getArr(rSusp));
+          setPostponed(getArr(rPost));
+          setCanceled(getArr(rCanc));
           setError(null);
         }
       } catch (e) {
@@ -425,63 +409,43 @@ export default function Home() {
     };
   }, []);
 
-  // Poll LIVE toutes les 15s (force page_size)
+  // Poll LIVE toutes les 15s (garde l'endpoint live qui est léger)
   useEffect(() => {
     const id = setInterval(async () => {
       try {
-        const r = await api.get(`matches/live/?page_size=${DEFAULT_PAGE_SIZE}`);
+        const r = await api.get("matches/live/");
         const arr = Array.isArray(r.data) ? r.data : r.data.results || [];
-        console.debug("poll live size:", arr.length);
         setLive(arr);
-      } catch (err) {
-        console.debug("poll live error", err);
+      } catch {
+        /* ignore */
       }
     }, 15000);
     return () => clearInterval(id);
   }, []);
 
-  // Poll autres listes toutes les 30s (force page_size)
+  // Poll autres listes toutes les 30s (on demande explicitement de larges pages)
   useEffect(() => {
     const id = setInterval(async () => {
       try {
         const [rUpcoming, rRecent, rSusp, rPost, rCanc] = await Promise.all([
-          api.get(`matches/upcoming/?page_size=${DEFAULT_PAGE_SIZE}`).catch(() =>
-            api.get(`matches/?status=SCHEDULED&ordering=datetime&page_size=${DEFAULT_PAGE_SIZE}`)
-          ),
-          api.get(`matches/recent/?page_size=${DEFAULT_PAGE_SIZE}`).catch(() =>
-            api.get(`matches/?status=FT&ordering=-datetime&page_size=${DEFAULT_PAGE_SIZE}`)
-          ),
-          api.get(`matches/?status=SUSPENDED&ordering=-datetime&page_size=${DEFAULT_PAGE_SIZE}`).catch(() => ({ data: [] })),
-          api.get(`matches/?status=POSTPONED&ordering=-datetime&page_size=${DEFAULT_PAGE_SIZE}`).catch(() => ({ data: [] })),
-          api.get(`matches/?status=CANCELED&ordering=-datetime&page_size=${DEFAULT_PAGE_SIZE}`).catch(() => ({ data: [] })),
+          api.get("matches/?status=SCHEDULED&ordering=datetime&page_size=1000").catch(() => ({ data: [] })),
+          api.get("matches/?status=FT&ordering=-datetime&page_size=1000").catch(() => ({ data: [] })),
+          api.get("matches/?status=SUSPENDED&ordering=-datetime&page_size=1000").catch(() => ({ data: [] })),
+          api.get("matches/?status=POSTPONED&ordering=-datetime&page_size=1000").catch(() => ({ data: [] })),
+          api.get("matches/?status=CANCELED&ordering=-datetime&page_size=1000").catch(() => ({ data: [] })),
         ]);
-
-        const upcomingArr = getArr(rUpcoming);
-        const recentArr = getArr(rRecent);
-        const suspArr = getArr(rSusp);
-        const postArr = getArr(rPost);
-        const cancArr = getArr(rCanc);
-
-        console.debug("poll 30s sizes:", {
-          upcoming: upcomingArr.length,
-          recent: recentArr.length,
-          suspended: suspArr.length,
-          postponed: postArr.length,
-          canceled: cancArr.length,
-        });
-
-        setUpcoming(upcomingArr);
-        setRecent(recentArr);
-        setSuspended(suspArr);
-        setPostponed(postArr);
-        setCanceled(cancArr);
-      } catch (err) {
-        console.debug("poll 30s error", err);
-      }
+        const getArr = (res) => (Array.isArray(res?.data) ? res.data : res?.data?.results) || [];
+        setUpcoming(getArr(rUpcoming));
+        setRecent(getArr(rRecent));
+        setSuspended(getArr(rSusp));
+        setPostponed(getArr(rPost));
+        setCanceled(getArr(rCanc));
+      } catch {}
     }, 30000);
     return () => clearInterval(id);
   }, []);
 
+  // Choix journée par défaut
   useEffect(() => {
     if (defaultRoundSet.current) return;
     const def = pickDefaultRound({ live, upcoming, recent });
@@ -498,12 +462,11 @@ export default function Home() {
     localStorage.setItem(ROUND_KEY, r === null ? "null" : String(r));
   };
 
+  // Fusion des listes (déduplication par id)
   const feed = useMemo(() => {
     const map = new Map();
     const push = (list) =>
       (list || []).forEach((m) => {
-        // debug rapide si tu veux vérifier les ids :
-        // console.debug("push id:", m.id, "round:", matchRoundNum(m));
         if (!map.has(m.id)) map.set(m.id, m);
       });
     push(live);
@@ -515,11 +478,13 @@ export default function Home() {
     return Array.from(map.values());
   }, [live, upcoming, postponed, suspended, canceled, recent]);
 
+  // Filtre par journée
   const feedFiltered = useMemo(() => {
     if (round == null) return feed;
     return feed.filter((m) => matchRoundNum(m) === Number(round));
   }, [feed, round]);
 
+  // Tri
   const statusRank = (s) => {
     const uu = (s || "").toUpperCase();
     if (uu === "LIVE" || uu === "HT" || uu === "PAUSED") return 0;
@@ -556,36 +521,8 @@ export default function Home() {
     });
   }, [feedFiltered]);
 
-  /* ---------- SPLASH OVERLAY PLEIN ÉCRAN ---------- */
-  if (loading) {
-    return (
-      <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-white">
-        {/* logo de l'app */}
-        <img
-          src="/KanuSportLogo1.jpg"
-          alt="KanuSport"
-          className="w-112 h-112 object-contain mb-20"
-        />
-
-        {/* powered by dbtech en bas */}
-        <div className="absolute bottom-6 inset-x-0 flex justify-center">
-          <div className="flex items-center gap-2 text-gray-400 text-xs">
-            <span>Powered by DBTech</span>
-            <img
-              src="/DBTechLogo.jpeg"
-              alt="DBTech"
-              className="w-12 h-12 object-contain h-15"
-            />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  /* ---------- CONTENU NORMAL ---------- */
-  if (error) {
-    return <p className="px-3 text-red-600">Erreur : {error}</p>;
-  }
+  if (loading) return <p className="px-3">Chargement…</p>;
+  if (error) return <p className="px-3 text-red-600">Erreur : {error}</p>;
 
   return (
     <div className="mx-auto max-w-[480px] px-3 pb-24">
