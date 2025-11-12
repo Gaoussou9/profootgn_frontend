@@ -84,13 +84,13 @@ function useServerSyncedMinute(match) {
       tickRef.current = null;
     }
 
-    // mi-temps/pause
+    // mi-temps / pause
     if (st === "HT" || st === "PAUSED") {
       setShownMinute(45);
       return;
     }
 
-    // terminé
+    // terminé -> pas de chrono
     if (st === "FT" || st === "FINISHED") {
       setShownMinute(null);
       return;
@@ -141,7 +141,7 @@ function useServerSyncedMinute(match) {
 }
 
 /* ---------------------------------------------------------
-   Formatteur minute
+   Formatteur du badge minute
    --------------------------------------------------------- */
 function formatMinuteForBadge(status, rawMinute, livePhaseOffset) {
   const st = (status || "").toUpperCase();
@@ -156,14 +156,14 @@ function formatMinuteForBadge(status, rawMinute, livePhaseOffset) {
 
   if (isH2) {
     if (n >= 90) return "90’+";
-    return `${n}'`;
+    return `${n}'`; // 45'..89'
   } else {
     if (n >= 45) return "45’+";
-    return `${n}'`;
+    return `${n}'`; // 0'..44'
   }
 }
 
-/* ---------- Barre de Journées ---------- */
+/* ---------- Barre de Journées (scrollable) ---------- */
 function MatchdayBar({ selected, onChange, max = 26 }) {
   const items = Array.from({ length: max }, (_, i) => i + 1);
   return (
@@ -301,6 +301,7 @@ function MatchCard({ m }) {
 
 /* ---------- Utils ---------- */
 const ROUND_KEY = "gn:home:round";
+const DEFAULT_PAGE_SIZE = 1000; // augmenté pour s'assurer de récupérer tous les matchs
 
 function matchRoundNum(m) {
   if (m?.round_number != null) return Number(m.round_number);
@@ -309,39 +310,47 @@ function matchRoundNum(m) {
   return tryName ? Number(tryName) : null;
 }
 
-function pickDefaultRound({ live = [], upcoming = [], recent = [] }) {
-  // priorité : journée où ça joue en live
-  if (Array.isArray(live) && live.length) {
-    const counts = new Map();
-    for (const mm of live) {
-      const r = matchRoundNum(mm);
-      if (r != null) counts.set(r, (counts.get(r) || 0) + 1);
+/* fetchAllPages :
+   récupère toutes les pages si l'API renvoie `next` et `results` (DRF-style).
+   Sinon retourne juste la réponse décodée.
+*/
+async function fetchAllPages(relativeUrl) {
+  const collected = [];
+  let url = relativeUrl;
+  try {
+    // api.get peut accepter des URLs relatives (comme "matches/recent/?page_size=1000")
+    while (url) {
+      const res = await api.get(url).catch((e) => {
+        // si erreur sur une page, on arrête et on renvoie ce qu'on a
+        if (process.env.NODE_ENV !== "production") console.debug("fetchAllPages error", url, e);
+        return { data: null };
+      });
+      if (!res || !res.data) break;
+
+      // DRF style
+      if (Array.isArray(res.data)) {
+        // API renvoie un array -> on récupère tout et fin
+        collected.push(...res.data);
+        break;
+      } else if (res.data.results && Array.isArray(res.data.results)) {
+        collected.push(...res.data.results);
+        url = res.data.next ? res.data.next : null;
+        // Note: si `res.data.next` est une URL absolue, ok ; api.get doit l'accepter.
+      } else {
+        // objet inattendu : essayer d'extraire data.results sinon data
+        if (Array.isArray(res.data.data)) {
+          collected.push(...res.data.data);
+        } else {
+          // res.data est un objet unique -> on casse (pas de pages)
+          break;
+        }
+        break;
+      }
     }
-    if (counts.size) {
-      return [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0];
-    }
-    const one = live.find((mm) => matchRoundNum(mm) != null);
-    if (one) return matchRoundNum(one);
+  } catch (err) {
+    if (process.env.NODE_ENV !== "production") console.debug("fetchAllPages unhandled error", err);
   }
-
-  // sinon : la prochaine journée parmi tous les upcoming (on suppose upcoming contient tous les SCHEDULED)
-  const now = Date.now();
-  const ups = (upcoming || [])
-    .map((mm) => ({ mm, t: Date.parse(mm.datetime) || Infinity }))
-    .filter((x) => Number.isFinite(x.t))
-    .sort((a, b) => a.t - b.t);
-
-  const future = ups.find((x) => x.t >= now) || ups[0];
-  if (future && matchRoundNum(future.mm) != null) return matchRoundNum(future.mm);
-
-  // sinon : la dernière jouée
-  const rec = (recent || [])
-    .map((mm) => ({ mm, t: Date.parse(mm.datetime) || 0 }))
-    .filter((x) => Number.isFinite(x.t))
-    .sort((a, b) => b.t - a.t)[0];
-  if (rec && matchRoundNum(rec.mm) != null) return matchRoundNum(rec.mm);
-
-  return null;
+  return collected;
 }
 
 /* ---------- Page d’accueil ---------- */
@@ -360,7 +369,6 @@ export default function Home() {
 
   const defaultRoundSet = useRef(false);
 
-  // Charger round préféré
   useEffect(() => {
     const saved = localStorage.getItem(ROUND_KEY);
     if (saved !== null) {
@@ -369,33 +377,55 @@ export default function Home() {
     }
   }, []);
 
-  // Premier fetch
+  // Helper pour extraire array depuis réponse API (support results pagination)
+  const getArrFromResponse = (res) =>
+    (Array.isArray(res?.data) ? res.data : res?.data?.results) || [];
+
+  /* --- Premier fetch (force page_size ou fetchAllPages) --- */
   useEffect(() => {
     let stop = false;
     (async () => {
       setLoad(true);
       try {
-        // IMPORTANT: on demande explicitement des page_size élevés pour éviter la pagination par défaut
-        const [rLive, rUpcoming, rRecent, rSusp, rPost, rCanc] = await Promise.all([
-          api.get("matches/live/").catch(() => ({ data: [] })),
-          // -> récupère tous les SCHEDULED, même si datetime < now (côté backend certains endpoints peuvent filtrer)
-          api.get("matches/?status=SCHEDULED&ordering=datetime&page_size=1000").catch(() => ({ data: [] })),
-          // -> récupérer un grand nombre de FT pour l'historique
-          api.get("matches/?status=FT&ordering=-datetime&page_size=1000").catch(() => ({ data: [] })),
-          api.get("matches/?status=SUSPENDED&ordering=-datetime&page_size=1000").catch(() => ({ data: [] })),
-          api.get("matches/?status=POSTPONED&ordering=-datetime&page_size=1000").catch(() => ({ data: [] })),
-          api.get("matches/?status=CANCELED&ordering=-datetime&page_size=1000").catch(() => ({ data: [] })),
+        // on essaye fetchAllPages pour récupérer *toutes* les pages si le backend pagine
+        const [
+          liveArr,
+          upcomingArr,
+          recentArr,
+          suspArr,
+          postArr,
+          cancArr,
+        ] = await Promise.all([
+          fetchAllPages(`matches/live/?page_size=${DEFAULT_PAGE_SIZE}`),
+          fetchAllPages(`matches/upcoming/?page_size=${DEFAULT_PAGE_SIZE}`).then((a) =>
+            a.length ? a : fetchAllPages(`matches/?status=SCHEDULED&ordering=datetime&page_size=${DEFAULT_PAGE_SIZE}`)
+          ),
+          fetchAllPages(`matches/recent/?page_size=${DEFAULT_PAGE_SIZE}`).then((a) =>
+            a.length ? a : fetchAllPages(`matches/?status=FT&ordering=-datetime&page_size=${DEFAULT_PAGE_SIZE}`)
+          ),
+          fetchAllPages(`matches/?status=SUSPENDED&ordering=-datetime&page_size=${DEFAULT_PAGE_SIZE}`).catch(() => []),
+          fetchAllPages(`matches/?status=POSTPONED&ordering=-datetime&page_size=${DEFAULT_PAGE_SIZE}`).catch(() => []),
+          fetchAllPages(`matches/?status=CANCELED&ordering=-datetime&page_size=${DEFAULT_PAGE_SIZE}`).catch(() => []),
         ]);
 
-        const getArr = (res) => (Array.isArray(res?.data) ? res.data : res?.data?.results) || [];
-
         if (!stop) {
-          setLive(getArr(rLive));
-          setUpcoming(getArr(rUpcoming));
-          setRecent(getArr(rRecent));
-          setSuspended(getArr(rSusp));
-          setPostponed(getArr(rPost));
-          setCanceled(getArr(rCanc));
+          if (process.env.NODE_ENV !== "production") {
+            console.debug("initial fetch sizes:", {
+              live: liveArr.length,
+              upcoming: upcomingArr.length,
+              recent: recentArr.length,
+              suspended: suspArr.length,
+              postponed: postArr.length,
+              canceled: cancArr.length,
+            });
+          }
+
+          setLive(liveArr);
+          setUpcoming(upcomingArr);
+          setRecent(recentArr);
+          setSuspended(suspArr);
+          setPostponed(postArr);
+          setCanceled(cancArr);
           setError(null);
         }
       } catch (e) {
@@ -409,43 +439,72 @@ export default function Home() {
     };
   }, []);
 
-  // Poll LIVE toutes les 15s (garde l'endpoint live qui est léger)
+  // Poll LIVE toutes les 15s (on force page_size)
   useEffect(() => {
     const id = setInterval(async () => {
       try {
-        const r = await api.get("matches/live/");
+        // pour le polling on peut se contenter d'une seule page grande
+        const r = await api.get(`matches/live/?page_size=${DEFAULT_PAGE_SIZE}`);
         const arr = Array.isArray(r.data) ? r.data : r.data.results || [];
+        if (process.env.NODE_ENV !== "production") console.debug("poll live size:", arr.length);
         setLive(arr);
-      } catch {
-        /* ignore */
+      } catch (err) {
+        if (process.env.NODE_ENV !== "production") console.debug("poll live error", err);
       }
     }, 15000);
     return () => clearInterval(id);
   }, []);
 
-  // Poll autres listes toutes les 30s (on demande explicitement de larges pages)
+  // Poll autres listes toutes les 30s (page_size)
   useEffect(() => {
     const id = setInterval(async () => {
       try {
-        const [rUpcoming, rRecent, rSusp, rPost, rCanc] = await Promise.all([
-          api.get("matches/?status=SCHEDULED&ordering=datetime&page_size=1000").catch(() => ({ data: [] })),
-          api.get("matches/?status=FT&ordering=-datetime&page_size=1000").catch(() => ({ data: [] })),
-          api.get("matches/?status=SUSPENDED&ordering=-datetime&page_size=1000").catch(() => ({ data: [] })),
-          api.get("matches/?status=POSTPONED&ordering=-datetime&page_size=1000").catch(() => ({ data: [] })),
-          api.get("matches/?status=CANCELED&ordering=-datetime&page_size=1000").catch(() => ({ data: [] })),
+        const [
+          rUpcoming,
+          rRecent,
+          rSusp,
+          rPost,
+          rCanc,
+        ] = await Promise.all([
+          api.get(`matches/upcoming/?page_size=${DEFAULT_PAGE_SIZE}`).catch(() =>
+            api.get(`matches/?status=SCHEDULED&ordering=datetime&page_size=${DEFAULT_PAGE_SIZE}`)
+          ),
+          api.get(`matches/recent/?page_size=${DEFAULT_PAGE_SIZE}`).catch(() =>
+            api.get(`matches/?status=FT&ordering=-datetime&page_size=${DEFAULT_PAGE_SIZE}`)
+          ),
+          api.get(`matches/?status=SUSPENDED&ordering=-datetime&page_size=${DEFAULT_PAGE_SIZE}`).catch(() => ({ data: [] })),
+          api.get(`matches/?status=POSTPONED&ordering=-datetime&page_size=${DEFAULT_PAGE_SIZE}`).catch(() => ({ data: [] })),
+          api.get(`matches/?status=CANCELED&ordering=-datetime&page_size=${DEFAULT_PAGE_SIZE}`).catch(() => ({ data: [] })),
         ]);
-        const getArr = (res) => (Array.isArray(res?.data) ? res.data : res?.data?.results) || [];
-        setUpcoming(getArr(rUpcoming));
-        setRecent(getArr(rRecent));
-        setSuspended(getArr(rSusp));
-        setPostponed(getArr(rPost));
-        setCanceled(getArr(rCanc));
-      } catch {}
+
+        const upcomingArr = getArrFromResponse(rUpcoming);
+        const recentArr = getArrFromResponse(rRecent);
+        const suspArr = getArrFromResponse(rSusp);
+        const postArr = getArrFromResponse(rPost);
+        const cancArr = getArrFromResponse(rCanc);
+
+        if (process.env.NODE_ENV !== "production") {
+          console.debug("poll 30s sizes:", {
+            upcoming: upcomingArr.length,
+            recent: recentArr.length,
+            suspended: suspArr.length,
+            postponed: postArr.length,
+            canceled: cancArr.length,
+          });
+        }
+
+        setUpcoming(upcomingArr);
+        setRecent(recentArr);
+        setSuspended(suspArr);
+        setPostponed(postArr);
+        setCanceled(cancArr);
+      } catch (err) {
+        if (process.env.NODE_ENV !== "production") console.debug("poll 30s error", err);
+      }
     }, 30000);
     return () => clearInterval(id);
   }, []);
 
-  // Choix journée par défaut
   useEffect(() => {
     if (defaultRoundSet.current) return;
     const def = pickDefaultRound({ live, upcoming, recent });
@@ -462,7 +521,6 @@ export default function Home() {
     localStorage.setItem(ROUND_KEY, r === null ? "null" : String(r));
   };
 
-  // Fusion des listes (déduplication par id)
   const feed = useMemo(() => {
     const map = new Map();
     const push = (list) =>
@@ -478,13 +536,11 @@ export default function Home() {
     return Array.from(map.values());
   }, [live, upcoming, postponed, suspended, canceled, recent]);
 
-  // Filtre par journée
   const feedFiltered = useMemo(() => {
     if (round == null) return feed;
     return feed.filter((m) => matchRoundNum(m) === Number(round));
   }, [feed, round]);
 
-  // Tri
   const statusRank = (s) => {
     const uu = (s || "").toUpperCase();
     if (uu === "LIVE" || uu === "HT" || uu === "PAUSED") return 0;
@@ -521,8 +577,36 @@ export default function Home() {
     });
   }, [feedFiltered]);
 
-  if (loading) return <p className="px-3">Chargement…</p>;
-  if (error) return <p className="px-3 text-red-600">Erreur : {error}</p>;
+  /* ---------- SPLASH OVERLAY PLEIN ÉCRAN ---------- */
+  if (loading) {
+    return (
+      <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-white">
+        {/* logo de l'app - noter les classes Tailwind standards */}
+        <img
+          src="/KanuSportLogo1.jpg"
+          alt="KanuSport"
+          className="w-48 h-48 object-contain mb-20"
+        />
+
+        {/* powered by dbtech en bas */}
+        <div className="absolute bottom-6 inset-x-0 flex justify-center">
+          <div className="flex items-center gap-2 text-gray-400 text-xs">
+            <span>Powered by DBTech</span>
+            <img
+              src="/DBTechLogo.jpeg"
+              alt="DBTech"
+              className="w-12 h-12 object-contain"
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ---------- CONTENU NORMAL ---------- */
+  if (error) {
+    return <p className="px-3 text-red-600">Erreur : {error}</p>;
+  }
 
   return (
     <div className="mx-auto max-w-[480px] px-3 pb-24">
