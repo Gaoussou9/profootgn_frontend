@@ -527,12 +527,12 @@ export default function Home() {
       <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-white">
         {/* image principale centrée, responsive */}
         <img
-          src="/KanuSportLogo1.jpg"
+          src="/Ballon.jpg"
           alt="KanuSport"
           onError={(e) => {
             // fallback si l'image principale manque
             e.currentTarget.onerror = null;
-            e.currentTarget.src = "/KanuSportLogo.jpg";
+            e.currentTarget.src = "/Ballon.jpg";
           }}
           className="max-w-[80%] max-h-[60%] object-contain mb-8"
         />
