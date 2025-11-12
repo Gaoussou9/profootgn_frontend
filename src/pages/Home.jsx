@@ -192,7 +192,6 @@ function MatchdayBar({ selected, onChange, max = 26 }) {
     </div>
   );
 }
-
 /* ---------- Carte Match ---------- */
 function MatchCard({ m }) {
   const status = (m.status || "").toUpperCase();
@@ -201,6 +200,7 @@ function MatchCard({ m }) {
   const isSuspended = status === "SUSPENDED";
   const isPostponed = status === "POSTPONED";
   const isCanceled = status === "CANCELED" || status === "CANCELLED";
+  const isFinished = status === "FT" || status === "FINISHED";
 
   const homeName =
     m.home_club_name || m.home || m.home_name || m.homeTeam || "Équipe 1";
@@ -217,6 +217,16 @@ function MatchCard({ m }) {
     liveMinute,
     m.live_phase_offset
   );
+
+  // determine the score text classes based on status
+  const scoreBaseClass = "text-xl sm:text-2xl font-extrabold leading-none tabular-nums";
+  const scoreStateClass = isSuspended || isCanceled
+    ? "line-through text-gray-400"
+    : isLive
+    ? "text-blue-600"
+    : isFinished
+    ? "text-black"
+    : "text-gray-900";
 
   return (
     <Link
@@ -261,11 +271,7 @@ function MatchCard({ m }) {
           ) : isPostponed ? (
             <span className="text-gray-400 font-semibold">—</span>
           ) : (
-            <span
-              className={`text-xl sm:text-2xl font-extrabold leading-none tabular-nums ${
-                isSuspended || isCanceled ? "line-through text-gray-400" : ""
-              }`}
-            >
+            <span className={`${scoreBaseClass} ${scoreStateClass}`}>
               {m.home_score}
               <span className="text-gray-400"> - </span>
               {m.away_score}
@@ -294,6 +300,7 @@ function MatchCard({ m }) {
     </Link>
   );
 }
+
 
 /* ---------- Utils ---------- */
 const ROUND_KEY = "gn:home:round";
