@@ -532,7 +532,7 @@ export default function Home() {
           onError={(e) => {
             // fallback si l'image principale manque
             e.currentTarget.onerror = null;
-            e.currentTarget.src = "/Ballon.jpg";
+            e.currentTarget.src = "/Ballon.png";
           }}
           className="max-w-[80%] max-h-[60%] object-contain mb-8"
         />
