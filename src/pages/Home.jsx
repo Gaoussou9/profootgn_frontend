@@ -84,19 +84,16 @@ function useServerSyncedMinute(match) {
       tickRef.current = null;
     }
 
-    // mi-temps/pause
     if (st === "HT" || st === "PAUSED") {
       setShownMinute(45);
       return;
     }
 
-    // terminé
     if (st === "FT" || st === "FINISHED") {
       setShownMinute(null);
       return;
     }
 
-    // pas live
     if (st !== "LIVE") {
       setShownMinute(null);
       return;
@@ -109,7 +106,6 @@ function useServerSyncedMinute(match) {
       !Number.isNaN(Date.parse(phaseStartISO)) &&
       Number.isFinite(phaseOffset);
 
-    // fallback si backend n'a pas envoyé les 2 champs
     if (!hasPhaseInfo) {
       const base = Number(minute);
       setShownMinute(Number.isFinite(base) ? base : null);
@@ -310,7 +306,6 @@ function matchRoundNum(m) {
 }
 
 function pickDefaultRound({ live = [], upcoming = [], recent = [] }) {
-  // priorité : journée où ça joue en live
   if (Array.isArray(live) && live.length) {
     const counts = new Map();
     for (const mm of live) {
@@ -324,7 +319,6 @@ function pickDefaultRound({ live = [], upcoming = [], recent = [] }) {
     if (one) return matchRoundNum(one);
   }
 
-  // sinon : la prochaine journée parmi tous les upcoming (on suppose upcoming contient tous les SCHEDULED)
   const now = Date.now();
   const ups = (upcoming || [])
     .map((mm) => ({ mm, t: Date.parse(mm.datetime) || Infinity }))
@@ -334,7 +328,6 @@ function pickDefaultRound({ live = [], upcoming = [], recent = [] }) {
   const future = ups.find((x) => x.t >= now) || ups[0];
   if (future && matchRoundNum(future.mm) != null) return matchRoundNum(future.mm);
 
-  // sinon : la dernière jouée
   const rec = (recent || [])
     .map((mm) => ({ mm, t: Date.parse(mm.datetime) || 0 }))
     .filter((x) => Number.isFinite(x.t))
@@ -360,7 +353,6 @@ export default function Home() {
 
   const defaultRoundSet = useRef(false);
 
-  // Charger round préféré
   useEffect(() => {
     const saved = localStorage.getItem(ROUND_KEY);
     if (saved !== null) {
@@ -369,18 +361,14 @@ export default function Home() {
     }
   }, []);
 
-  // Premier fetch
   useEffect(() => {
     let stop = false;
     (async () => {
       setLoad(true);
       try {
-        // IMPORTANT: on demande explicitement des page_size élevés pour éviter la pagination par défaut
         const [rLive, rUpcoming, rRecent, rSusp, rPost, rCanc] = await Promise.all([
           api.get("matches/live/").catch(() => ({ data: [] })),
-          // -> récupère tous les SCHEDULED, même si datetime < now (côté backend certains endpoints peuvent filtrer)
           api.get("matches/?status=SCHEDULED&ordering=datetime&page_size=1000").catch(() => ({ data: [] })),
-          // -> récupérer un grand nombre de FT pour l'historique
           api.get("matches/?status=FT&ordering=-datetime&page_size=1000").catch(() => ({ data: [] })),
           api.get("matches/?status=SUSPENDED&ordering=-datetime&page_size=1000").catch(() => ({ data: [] })),
           api.get("matches/?status=POSTPONED&ordering=-datetime&page_size=1000").catch(() => ({ data: [] })),
@@ -409,21 +397,17 @@ export default function Home() {
     };
   }, []);
 
-  // Poll LIVE toutes les 15s (garde l'endpoint live qui est léger)
   useEffect(() => {
     const id = setInterval(async () => {
       try {
         const r = await api.get("matches/live/");
         const arr = Array.isArray(r.data) ? r.data : r.data.results || [];
         setLive(arr);
-      } catch {
-        /* ignore */
-      }
+      } catch {}
     }, 15000);
     return () => clearInterval(id);
   }, []);
 
-  // Poll autres listes toutes les 30s (on demande explicitement de larges pages)
   useEffect(() => {
     const id = setInterval(async () => {
       try {
@@ -445,7 +429,6 @@ export default function Home() {
     return () => clearInterval(id);
   }, []);
 
-  // Choix journée par défaut
   useEffect(() => {
     if (defaultRoundSet.current) return;
     const def = pickDefaultRound({ live, upcoming, recent });
@@ -462,7 +445,6 @@ export default function Home() {
     localStorage.setItem(ROUND_KEY, r === null ? "null" : String(r));
   };
 
-  // Fusion des listes (déduplication par id)
   const feed = useMemo(() => {
     const map = new Map();
     const push = (list) =>
@@ -478,13 +460,11 @@ export default function Home() {
     return Array.from(map.values());
   }, [live, upcoming, postponed, suspended, canceled, recent]);
 
-  // Filtre par journée
   const feedFiltered = useMemo(() => {
     if (round == null) return feed;
     return feed.filter((m) => matchRoundNum(m) === Number(round));
   }, [feed, round]);
 
-  // Tri
   const statusRank = (s) => {
     const uu = (s || "").toUpperCase();
     if (uu === "LIVE" || uu === "HT" || uu === "PAUSED") return 0;
@@ -521,26 +501,28 @@ export default function Home() {
     });
   }, [feedFiltered]);
 
-  /* ---------- SPLASH OVERLAY PLEIN ÉCRAN ---------- */
+  /* ---------- SPLASH OVERLAY PLEIN ÉCRAN (image de fond seule) ---------- */
   if (loading) {
     return (
-      <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-white">
-        {/* image principale centrée, responsive */}
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-white">
+        {/* background fullbleed */}
         <img
           src="/Ballon.jpg"
-          alt="KanuSport"
+          alt="KanuSport background"
           onError={(e) => {
-            // fallback si l'image principale manque
             e.currentTarget.onerror = null;
             e.currentTarget.src = "/Ballon.png";
           }}
-          className="max-w-[80%] max-h-[60%] object-contain mb-8"
+          className="absolute inset-0 w-full h-full object-cover"
         />
 
-        {/* Texte de chargement */}
-        <div className="flex items-center gap-3 mt-2">
+        {/* light overlay to keep contrast readable */}
+        <div className="absolute inset-0 bg-white/75" />
+
+        {/* spinner + text centered on top */}
+        <div className="relative z-10 flex flex-col items-center">
           <svg
-            className="animate-spin h-5 w-5"
+            className="animate-spin h-10 w-10 text-gray-700"
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"
@@ -560,11 +542,11 @@ export default function Home() {
               d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
             />
           </svg>
-          <span className="text-sm text-gray-500">Chargement…</span>
+          <span className="mt-3 text-lg text-gray-700"></span>
         </div>
 
         {/* powered by DBTech en bas */}
-        <div className="absolute bottom-6 inset-x-0 flex justify-center">
+        <div className="absolute bottom-6 inset-x-0 flex justify-center z-10">
           <div className="flex items-center gap-2 text-gray-400 text-xs">
             <span>Powered by DBTech</span>
             <img
@@ -582,14 +564,13 @@ export default function Home() {
     );
   }
 
-  /* ---------- CONTENU NORMAL ---------- */
   if (error) return <p className="px-3 text-red-600">Erreur : {error}</p>;
 
   return (
     <div className="mx-auto max-w-[480px] px-3 pb-24">
       <section className="space-y-4">
         <header className="flex items-baseline justify-between">
-          <h1 className="text-2xl font-bold">Ligue 1 Guinéenne</h1>
+          <h1 className="text-2xl font-bold">LIGUE 1 GUICOPRES</h1>
         </header>
 
         <MatchdayBar selected={round} onChange={handleRoundChange} max={26} />
