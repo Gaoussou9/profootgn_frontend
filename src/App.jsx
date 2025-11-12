@@ -1,5 +1,5 @@
 // src/App.jsx
-import { BrowserRouter, Routes, Route, NavLink, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Standings from "./pages/Standings.jsx";
 import TopScorers from "./pages/TopScorers.jsx";
 import MatchDetail from "./pages/MatchDetail.jsx";
@@ -10,41 +10,21 @@ import ClubDetail from "./pages/ClubDetail.jsx";
 import AssistsLeaders from "./pages/AssistsLeaders.jsx";
 import { ClubSheetHost } from "./components/ClubSheet";
 import { StaffSheetHost } from "./components/StaffSheet";
-
-const Nav = () => (
-  <nav className="px-4 py-3 border-b bg-white sticky top-0 z-10 flex gap-4">
-    <NavLink end to="/journees" className={({ isActive }) => (isActive ? "font-semibold" : "")}>
-      Accueil
-    </NavLink>
-    <NavLink to="/standings" className={({ isActive }) => (isActive ? "font-semibold" : "")}>
-      Classement
-    </NavLink>
-    <NavLink to="/top-scorers" className={({ isActive }) => (isActive ? "font-semibold" : "")}>
-      Buteurs
-    </NavLink>
-    <NavLink to="/assists" className={({ isActive }) => (isActive ? "font-semibold" : "")}>
-      Passeurs
-    </NavLink>
-    <NavLink to="/clubs" className={({ isActive }) => (isActive ? "font-semibold" : "")}>
-      Clubs
-    </NavLink>
-  </nav>
-);
+import BottomNav from "./components/layout/BottomNav.jsx"; // Navigation bas uniquement
 
 export default function App() {
   return (
     <BrowserRouter>
-      <Nav />
-      <main className="p-6 max-w-6xl mx-auto">
+      <main className="px-4 sm:px-6 md:px-8 py-4 max-w-6xl mx-auto pb-28">
         <Routes>
-          {/* Accueil -> /journees */}
+          {/* Redirection par défaut vers la page des matchs */}
           <Route path="/" element={<Navigate to="/journees" replace />} />
 
-          {/* Pages */}
+          {/* Pages principales */}
           <Route path="/journees" element={<Home />} />
-          <Route path="/standings" element={<Standings />} />
-          <Route path="/top-scorers" element={<TopScorers />} />
-          <Route path="/assists" element={<AssistsLeaders />} />
+          <Route path="/classement" element={<Standings />} />
+          <Route path="/buteurs" element={<TopScorers />} />
+          <Route path="/passeurs" element={<AssistsLeaders />} />
           <Route path="/clubs" element={<Clubs />} />
           <Route path="/clubs/:id" element={<ClubDetail />} />
           <Route path="/match/:id" element={<MatchDetail />} />
@@ -60,6 +40,9 @@ export default function App() {
       {/* Hôtes globaux */}
       <ClubSheetHost />
       <StaffSheetHost />
+
+      {/* Barre de navigation du bas */}
+      <BottomNav />
     </BrowserRouter>
   );
 }
