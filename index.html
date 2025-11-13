@@ -1,15 +1,29 @@
 <!doctype html>
 <html lang="fr">
   <head>
-
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>KanouSport</title>
-    <link rel="icon" type="image/png" href="/KanuLogo.jpg" />
-<link rel="apple-touch-icon" href="/KanuLogo.jpg" />
-<link rel="manifest" href="/manifest.json" />
 
+    <!-- Favicon et icône Apple -->
+    <link rel="icon" type="image/png" href="/KanuLogo.jpg" />
+    <link rel="apple-touch-icon" href="/KanuLogo.jpg" />
+
+    <!-- PWA manifest -->
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- Meta obligatoires pour installation PWA -->
+    <meta name="theme-color" content="#ffd43b" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+
+    <!-- SEO optionnel -->
+    <meta
+      name="description"
+      content="KanouSport — Livescore, classements et statistiques du football guinéen."
+    />
   </head>
+
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
