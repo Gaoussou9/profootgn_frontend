@@ -1,0 +1,19 @@
+{
+  "name": "KANOUSPORT",
+  "short_name": "KANOUSPORT",
+  "icons": [
+    {
+      "src": "/KanuLogo.jpg",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/KanuLogo.jpg",
+      "sizes": "512x512",
+      "type": "image/jpg"
+    }
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff"
+}
