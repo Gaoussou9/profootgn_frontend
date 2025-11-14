@@ -144,22 +144,59 @@ export default function ClubDetail() {
         if (stop) return;
         setClub(c);
 
-        // Joueurs
-        try {
-          // essaie de filtrer les joueurs actifs si l'API le supporte
-          const r = await api.get(`players/?club=${id}&active=1&ordering=number`);
-          const arr = Array.isArray(r.data) ? r.data : r.data?.results || [];
-          if (!stop && Array.isArray(arr)) setPlayers(arr);
-        } catch {
-          // fallback sans active=1 si jamais l'API ne le supporte pas
-          try {
-            const r2 = await api.get(`players/?club=${id}&ordering=number`);
-            const arr2 = Array.isArray(r2.data) ? r2.data : r2.data?.results || [];
-            if (!stop && Array.isArray(arr2)) setPlayers(arr2);
-          } catch {
-            if (!stop) setPlayers([]);
-          }
-        }
+        // --- Remplacer la section "Joueurs" dans useEffect() par ceci ---
+try {
+  // Fonction utilitaire pour récupérer toutes les pages (si pagination présente)
+  const fetchAllPlayers = async (params) => {
+    const all = [];
+    // Demande un page_size élevé (backend peut l'ignorer) et gère la pagination via next
+    const PAGE_SIZE = 1000;
+    let page = 1;
+    while (true) {
+      const r = await api.get(`players/`, {
+        params: { ...params, page, page_size: PAGE_SIZE },
+      });
+      // Cas array direct ou structure { results, next }
+      const arr = Array.isArray(r.data)
+        ? r.data
+        : Array.isArray(r.data?.results)
+        ? r.data.results
+        : [];
+      all.push(...arr);
+
+      // Si backend retourne un lien next ou on a moins que PAGE_SIZE => on arrête
+      const hasNext = !!r.data?.next;
+      if (!hasNext && arr.length < PAGE_SIZE) break;
+      if (!hasNext && arr.length === 0) break;
+      if (!hasNext && arr.length > 0 && arr.length < PAGE_SIZE) break;
+
+      // Si pas de next, mais on a rempli tout, on sort (sécurité)
+      if (!hasNext) break;
+
+      page += 1;
+      // petite pause si tu veux éviter trop d'appels (optionnel)
+      // await new Promise(res => setTimeout(res, 50));
+    }
+    return all;
+  };
+
+  // 1) Essayer avec active=1 (si l'API le supporte)
+  try {
+    const arr = await fetchAllPlayers({ club: id, active: 1, ordering: "number" });
+    if (!stop && Array.isArray(arr)) setPlayers(arr);
+  } catch (errInner) {
+    // 2) Fallback : retenter sans active=1 si l'API ne supporte pas ce filtre
+    try {
+      const arr2 = await fetchAllPlayers({ club: id, ordering: "number" });
+      if (!stop && Array.isArray(arr2)) setPlayers(arr2);
+    } catch (err2) {
+      if (!stop) setPlayers([]);
+    }
+  }
+} catch (e) {
+  if (!stop) setPlayers([]);
+}
+
 
         // Staff
         try {
