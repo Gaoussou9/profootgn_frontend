@@ -178,13 +178,11 @@ try {
   if (!stop) setPlayers(playersAccum);
 } catch {
   // fallback: essayer une requête sans active
-  try {
-    const r2 = await api.get(`players/?club=${id}&ordering=number&page_size=1000`);
-    const arr2 = Array.isArray(r2.data) ? r2.data : r2.data?.results || [];
-    if (!stop && Array.isArray(arr2)) setPlayers(arr2);
-  } catch {
-    if (!stop) setPlayers([]);
-  }
+  // Remplacer la requête simple par :
+const r = await api.get(`players/?club=${id}&active=1&ordering=number&page_size=1000`);
+const arr = Array.isArray(r.data) ? r.data : r.data?.results || [];
+if (!stop && Array.isArray(arr)) setPlayers(arr);
+
 }
 
 
