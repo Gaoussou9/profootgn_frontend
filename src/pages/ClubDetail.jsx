@@ -144,57 +144,52 @@ export default function ClubDetail() {
         if (stop) return;
         setClub(c);
 
-        // --- Remplacer la section "Joueurs" dans useEffect() par ceci ---
-try {
-  // Fonction utilitaire pour récupérer toutes les pages (si pagination présente)
-  const fetchAllPlayers = async (params) => {
-    const all = [];
-    // Demande un page_size élevé (backend peut l'ignorer) et gère la pagination via next
-    const PAGE_SIZE = 1000;
-    let page = 1;
-    while (true) {
-      const r = await api.get(`players/`, {
-        params: { ...params, page, page_size: PAGE_SIZE },
-      });
-      // Cas array direct ou structure { results, next }
-      const arr = Array.isArray(r.data)
-        ? r.data
-        : Array.isArray(r.data?.results)
-        ? r.data.results
-        : [];
-      all.push(...arr);
+        // utilitaire : récupère toutes les pages • gère responses type Array ou { results, next }
+const fetchAllPlayers = async (params = {}) => {
+  const PAGE_SIZE = 1000;
+  const first = await api.get(`players/`, {
+    params: { ...params, page: 1, page_size: PAGE_SIZE },
+  });
 
-      // Si backend retourne un lien next ou on a moins que PAGE_SIZE => on arrête
-      const hasNext = !!r.data?.next;
-      if (!hasNext && arr.length < PAGE_SIZE) break;
-      if (!hasNext && arr.length === 0) break;
-      if (!hasNext && arr.length > 0 && arr.length < PAGE_SIZE) break;
+  if (Array.isArray(first.data)) return first.data;
 
-      // Si pas de next, mais on a rempli tout, on sort (sécurité)
-      if (!hasNext) break;
+  const results = Array.isArray(first.data?.results) ? [...first.data.results] : [];
+  let next = first.data?.next || null;
 
-      page += 1;
-      // petite pause si tu veux éviter trop d'appels (optionnel)
-      // await new Promise(res => setTimeout(res, 50));
-    }
-    return all;
-  };
+  // si next absent mais results.length < PAGE_SIZE -> probablement tout est là
+  if (!next && results.length > 0 && results.length < PAGE_SIZE) return results;
 
-  // 1) Essayer avec active=1 (si l'API le supporte)
-  try {
-    const arr = await fetchAllPlayers({ club: id, active: 1, ordering: "number" });
-    if (!stop && Array.isArray(arr)) setPlayers(arr);
-  } catch (errInner) {
-    // 2) Fallback : retenter sans active=1 si l'API ne supporte pas ce filtre
+  while (next) {
     try {
-      const arr2 = await fetchAllPlayers({ club: id, ordering: "number" });
-      if (!stop && Array.isArray(arr2)) setPlayers(arr2);
-    } catch (err2) {
-      if (!stop) setPlayers([]);
+      const pageRes = await api.get(next);
+      if (Array.isArray(pageRes.data)) {
+        results.push(...pageRes.data);
+        next = null;
+      } else {
+        const pageArr = Array.isArray(pageRes.data?.results) ? pageRes.data.results : [];
+        results.push(...pageArr);
+        next = pageRes.data?.next || null;
+      }
+    } catch (errPage) {
+      console.warn("Erreur lors du chargement d'une page de players:", errPage);
+      break;
     }
   }
-} catch (e) {
-  if (!stop) setPlayers([]);
+
+  return results;
+};
+
+// usage dans useEffect (remplace ton code actuel de chargement players)
+try {
+  const all = await fetchAllPlayers({ club: id, active: 1, ordering: "number" });
+  if (!stop && Array.isArray(all)) setPlayers(all);
+} catch {
+  try {
+    const all2 = await fetchAllPlayers({ club: id, ordering: "number" });
+    if (!stop && Array.isArray(all2)) setPlayers(all2);
+  } catch {
+    if (!stop) setPlayers([]);
+  }
 }
 
 
