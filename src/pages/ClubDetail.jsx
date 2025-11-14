@@ -144,49 +144,44 @@ export default function ClubDetail() {
         if (stop) return;
         setClub(c);
 
-        // utilitaire : récupère toutes les pages • gère responses type Array ou { results, next }
-const fetchAllPlayers = async (params = {}) => {
-  const PAGE_SIZE = 1000;
-  const first = await api.get(`players/`, {
-    params: { ...params, page: 1, page_size: PAGE_SIZE },
-  });
+        // Joueurs — fetch all pages (robuste contre pagination côté serveur)
+try {
+  const playersAccum = [];
+  let nextUrl = `players/?club=${id}&active=1&ordering=number&page_size=1000`;
+  // page_size=100 ici pour limiter la charge, tu peux augmenter si nécessaire
 
-  if (Array.isArray(first.data)) return first.data;
-
-  const results = Array.isArray(first.data?.results) ? [...first.data.results] : [];
-  let next = first.data?.next || null;
-
-  // si next absent mais results.length < PAGE_SIZE -> probablement tout est là
-  if (!next && results.length > 0 && results.length < PAGE_SIZE) return results;
-
-  while (next) {
-    try {
-      const pageRes = await api.get(next);
-      if (Array.isArray(pageRes.data)) {
-        results.push(...pageRes.data);
-        next = null;
+  while (nextUrl) {
+    // si `api` est un axios préconfiguré avec baseURL, on peut appeler api.get(nextUrl)
+    const res = await api.get(nextUrl);
+    const data = res.data;
+    // DRF-style: { count, next, previous, results }
+    if (Array.isArray(data?.results)) {
+      playersAccum.push(...data.results);
+      // next peut être une URL complète ou un path relatif
+      if (data.next) {
+        // si next est absolue : on veut l'appeler via l'instance `api`
+        // essayer d'extraire la partie relative si besoin
+        const parsed = new URL(data.next, window.location.origin);
+        nextUrl = parsed.pathname + parsed.search;
       } else {
-        const pageArr = Array.isArray(pageRes.data?.results) ? pageRes.data.results : [];
-        results.push(...pageArr);
-        next = pageRes.data?.next || null;
+        nextUrl = null;
       }
-    } catch (errPage) {
-      console.warn("Erreur lors du chargement d'une page de players:", errPage);
-      break;
+    } else if (Array.isArray(data)) {
+      // si l'API renvoie directement une liste (non paginée)
+      playersAccum.push(...data);
+      nextUrl = null;
+    } else {
+      nextUrl = null;
     }
   }
 
-  return results;
-};
-
-// usage dans useEffect (remplace ton code actuel de chargement players)
-try {
-  const all = await fetchAllPlayers({ club: id, active: 1, ordering: "number" });
-  if (!stop && Array.isArray(all)) setPlayers(all);
+  if (!stop) setPlayers(playersAccum);
 } catch {
+  // fallback: essayer une requête sans active
   try {
-    const all2 = await fetchAllPlayers({ club: id, ordering: "number" });
-    if (!stop && Array.isArray(all2)) setPlayers(all2);
+    const r2 = await api.get(`players/?club=${id}&ordering=number&page_size=1000`);
+    const arr2 = Array.isArray(r2.data) ? r2.data : r2.data?.results || [];
+    if (!stop && Array.isArray(arr2)) setPlayers(arr2);
   } catch {
     if (!stop) setPlayers([]);
   }
