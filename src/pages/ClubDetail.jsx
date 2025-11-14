@@ -144,61 +144,22 @@ export default function ClubDetail() {
         if (stop) return;
         setClub(c);
 
-        // Joueurs — follow pagination if present
-try {
-  const fetchAll = async (path, params = {}) => {
-    const accumulated = [];
-    // première requête
-    let res = await api.get(path, { params });
-    let data = res.data;
-
-    // cas DRF / pagination { results, next }
-    if (Array.isArray(data?.results) || data?.next !== undefined) {
-      // push first page results
-      const first = Array.isArray(data.results) ? data.results : data;
-      if (Array.isArray(first)) accumulated.push(...first);
-
-      // suivant: utilise data.next (URL) si présent
-      let next = data.next || null;
-      while (next) {
-        // si next est une URL absolue, on peut appeler api.get(next) si client le supporte
-        // fallback: extraire query params + appeler même endpoint avec page param
+        // Joueurs
         try {
-          const r = await api.get(next);
-          const d = r.data;
-          const pageArr = Array.isArray(d.results) ? d.results : d;
-          if (Array.isArray(pageArr)) accumulated.push(...pageArr);
-          next = d.next || null;
+          // essaie de filtrer les joueurs actifs si l'API le supporte
+          const r = await api.get(`players/?club=${id}&active=1&ordering=number`);
+          const arr = Array.isArray(r.data) ? r.data : r.data?.results || [];
+          if (!stop && Array.isArray(arr)) setPlayers(arr);
         } catch {
-          // si appel via next échoue, on casse la boucle pour éviter boucle infinie
-          next = null;
+          // fallback sans active=1 si jamais l'API ne le supporte pas
+          try {
+            const r2 = await api.get(`players/?club=${id}&ordering=number`);
+            const arr2 = Array.isArray(r2.data) ? r2.data : r2.data?.results || [];
+            if (!stop && Array.isArray(arr2)) setPlayers(arr2);
+          } catch {
+            if (!stop) setPlayers([]);
+          }
         }
-      }
-    } else if (Array.isArray(data)) {
-      // si l'API renvoie déjà un tableau (sans pagination)
-      accumulated.push(...data);
-    } else {
-      // parfois l'API met les résultats directement dans data.results
-      const maybe = Array.isArray(data?.data) ? data.data : Array.isArray(data?.results) ? data.results : [];
-      if (maybe.length) accumulated.push(...maybe);
-    }
-
-    return accumulated;
-  };
-
-  const arr = await fetchAll(`players/?club=${id}`, { active: 1, ordering: "number", page_size: 1000 });
-  if (!stop && Array.isArray(arr)) setPlayers(arr);
-} catch {
-  // fallback simple
-  try {
-    const r2 = await api.get(`players/?club=${id}&ordering=number&page_size=1000`);
-    const arr2 = Array.isArray(r2.data) ? r2.data : r2.data?.results || [];
-    if (!stop && Array.isArray(arr2)) setPlayers(arr2);
-  } catch {
-    if (!stop) setPlayers([]);
-  }
-}
-
 
         // Staff
         try {
