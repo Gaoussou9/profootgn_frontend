@@ -89,7 +89,6 @@ const displayName = (p = {}) =>
     [p.player.first_name, p.player.last_name].filter(Boolean).join(" ").trim()) ||
   "";
 
-/** "Gaoussou Cissé" -> "G. Cissé" */
 const toShort = (fullName) => {
   const s = String(fullName || "").trim();
   if (!s) return "";
@@ -311,6 +310,7 @@ const PlayerChip = ({
 };
 
 /* ===== Helpers formation & terrain ===== */
+// parseFormation remains but won't be used to determine lines anymore
 const parseFormation = (formationStr, starters) => {
   if (typeof formationStr === "string" && /^\d+(-\d+)+$/.test(formationStr)) {
     return formationStr.split("-").map((n) => Number(n));
@@ -324,25 +324,28 @@ const parseFormation = (formationStr, starters) => {
   return [d, m, f];
 };
 
-const makeLines = (starters, formationStr) => {
-  const GK = starters.filter((p) =>
-    (p.position || "").toUpperCase().startsWith("G")
-  );
-  const field = starters.filter(
-    (p) => !(p.position || "").toUpperCase().startsWith("G")
-  );
-  field.sort(
-    (a, b) =>
-      (a.number ?? 999) - (b.number ?? 999) ||
-      String(displayName(a)).localeCompare(String(displayName(b)))
-  );
-  const counts = parseFormation(formationStr, starters);
-  const lines = [];
-  lines.push(field.splice(0, counts[0]));
-  lines.push(field.splice(0, counts[1]));
-  lines.push(field.splice(0, counts[2]));
-  if (field.length) lines.splice(1, 0, field);
-  return { gk: GK[0] || null, rows: lines };
+/**
+ * makeLines: nouvelle version FORCÉE PAR ORDRE demandé par l'utilisateur:
+ * - index 0 => GK
+ * - index 1..4 => Défenseurs (jusqu'à 4)
+ * - index 5..7 => Milieux (jusqu'à 3)
+ * - index >=8 => Attaquants (reste)
+ *
+ * On renvoie { gk, rows } où rows est un tableau de 3 lignes (déf / mil / att).
+ */
+const makeLines = (starters = [], formationStr) => {
+  // starters is expected in the intended order (admin / source)
+  const safe = Array.isArray(starters) ? starters : [];
+
+  const gk = safe[0] || null;
+  const defenders = safe.slice(1, 5); // 1,2,3,4
+  const midfields = safe.slice(5, 8); // 5,6,7
+  const attackers = safe.slice(8); // 8+
+
+  // rows: keep 3 rows: defenders, midfields, attackers
+  const rows = [defenders, midfields, attackers];
+
+  return { gk, rows };
 };
 
 const Pitch = ({ children }) => (
@@ -524,7 +527,6 @@ const TeamLineupCard = ({
                     title={nmFull}
                   />
 
-                  {/* numéro + nom prennent la largeur dispo */}
                   <div className="flex min-w-0 flex-1 items-center gap-2">
                     <span className="tabular-nums text-gray-700 shrink-0">
                       {Number.isFinite(Number(p.number))
@@ -536,7 +538,6 @@ const TeamLineupCard = ({
                     </span>
                   </div>
 
-                  {/* poste + stats + note à droite */}
                   <div className="flex items-center gap-2 shrink-0 text-[11px] text-gray-500">
                     <span className="uppercase tracking-wide">
                       {p.position || ""}
@@ -752,7 +753,6 @@ export default function MatchDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [m, id]);
 
-  // Nouveau : dérive le badge LIVE / HT / FT (et plus de chrono)
   const rawStatus = (m?.status || "").toUpperCase().trim();
   let badgeLabel = null;
   if (
@@ -774,8 +774,8 @@ export default function MatchDetail() {
     rawStatus.includes("2ND HALF") ||
     rawStatus.includes("FIRST HALF") ||
     rawStatus.includes("1ST HALF") ||
-    rawStatus.includes("2ND") ||
-    rawStatus.includes("1ST")
+    rawStatus.includes("1ST") ||
+    rawStatus.includes("2ND")
   ) {
     badgeLabel = "LIVE";
   }
@@ -1264,7 +1264,7 @@ export default function MatchDetail() {
                 teamAvg={m.avg_rating_home}
                 motmId={globalMotmId}
                 evStats={eventStats}
-                chipScale={0.55} // <-- RÉDUCTION visuelle sur le terrain
+                chipScale={0.55}
               />
               <TeamLineupCard
                 title={m.away_club_name}
@@ -1276,7 +1276,7 @@ export default function MatchDetail() {
                 teamAvg={m.avg_rating_away}
                 motmId={globalMotmId}
                 evStats={eventStats}
-                chipScale={0.55} // <-- pareil
+                chipScale={0.55}
               />
             </div>
           </div>
