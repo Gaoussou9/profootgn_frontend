@@ -89,7 +89,6 @@ const displayName = (p = {}) =>
     [p.player.first_name, p.player.last_name].filter(Boolean).join(" ").trim()) ||
   "";
 
-/** "Gaoussou Cissé" -> "G. Cissé" */
 const toShort = (fullName) => {
   const s = String(fullName || "").trim();
   if (!s) return "";
@@ -124,7 +123,17 @@ const getClubId = (p) => {
   if (p.club && typeof p.club.id === "number") return p.club.id;
   return null;
 };
-const clubEq = (p, id) => String(getClubId(p)) === String(id);
+// Robust club equality to avoid mixing home/away on type mismatch
+const clubEq = (p, id) => {
+  try {
+    const a = Number(getClubId(p));
+    const b = Number(id);
+    if (Number.isNaN(a) || Number.isNaN(b)) return String(getClubId(p)) === String(id);
+    return a === b;
+  } catch {
+    return String(getClubId(p)) === String(id);
+  }
+};
 const isStarting = (p) => {
   const v = p.is_starting ?? p.starter ?? p.starting ?? null;
   if (typeof v === "boolean") return v;
@@ -324,10 +333,35 @@ const parseFormation = (formationStr, starters) => {
   return [d, m, f];
 };
 
+/* ----- nouvelle fonction : enforce positions from order ----- */
+/**
+ * Si les positions sont manquantes, on applique la règle :
+ * 0 => G
+ * 1..4 => D (4)
+ * 5..7 => M (3)
+ * reste => F
+ * On n'écrase QUE si position est falsy / vide.
+ */
+function enforcePositionsByOrder(arr) {
+  if (!Array.isArray(arr)) return arr;
+  return arr.map((p, idx) => {
+    const pos = (p.position || "").toString().trim();
+    if (pos) return p; // laisse tel quel si une position existe
+
+    let newPos = "";
+    if (idx === 0) newPos = "G";
+    else if (idx >= 1 && idx <= 4) newPos = "D";
+    else if (idx >= 5 && idx <= 7) newPos = "M";
+    else newPos = "F"; // attaque
+    return { ...p, position: newPos };
+  });
+}
+
 const makeLines = (starters, formationStr) => {
   const GK = starters.filter((p) =>
     (p.position || "").toUpperCase().startsWith("G")
   );
+  // tous les autres
   const field = starters.filter(
     (p) => !(p.position || "").toUpperCase().startsWith("G")
   );
@@ -338,10 +372,10 @@ const makeLines = (starters, formationStr) => {
   );
   const counts = parseFormation(formationStr, starters);
   const lines = [];
-  lines.push(field.splice(0, counts[0]));
-  lines.push(field.splice(0, counts[1]));
-  lines.push(field.splice(0, counts[2]));
-  if (field.length) lines.splice(1, 0, field);
+  lines.push(field.splice(0, counts[0])); // défense
+  lines.push(field.splice(0, counts[1])); // milieux
+  lines.push(field.splice(0, counts[2])); // attaque
+  if (field.length) lines.splice(1, 0, field); // si éléments restants, les insérer au milieu
   return { gk: GK[0] || null, rows: lines };
 };
 
@@ -392,9 +426,7 @@ const TeamLineupCard = ({
     return (
       <PlayerChip
         id={
-          p.player_id ??
-          (typeof p.player === "number" ? p.player : p.player?.id) ??
-          null
+          p.player_id ?? (typeof p.player === "number" ? p.player : p.player?.id) ?? null
         }
         clubId={getClubId(p)}
         name={toShort(nm)}
@@ -509,11 +541,7 @@ const TeamLineupCard = ({
                     }}
                     onClick={() => {
                       const pid =
-                        p.player_id ??
-                        (typeof p.player === "number"
-                          ? p.player
-                          : p.player?.id) ??
-                        null;
+                        p.player_id ?? (typeof p.player === "number" ? p.player : p.player?.id) ?? null;
                       if (pid) openSheet(pid);
                       else
                         openSheetSmart({
@@ -524,23 +552,17 @@ const TeamLineupCard = ({
                     title={nmFull}
                   />
 
-                  {/* numéro + nom prennent la largeur dispo */}
                   <div className="flex min-w-0 flex-1 items-center gap-2">
                     <span className="tabular-nums text-gray-700 shrink-0">
-                      {Number.isFinite(Number(p.number))
-                        ? String(p.number)
-                        : ""}
+                      {Number.isFinite(Number(p.number)) ? String(p.number) : ""}
                     </span>
                     <span className="truncate font-medium" title={nmFull}>
                       {nm}
                     </span>
                   </div>
 
-                  {/* poste + stats + note à droite */}
                   <div className="flex items-center gap-2 shrink-0 text-[11px] text-gray-500">
-                    <span className="uppercase tracking-wide">
-                      {p.position || ""}
-                    </span>
+                    <span className="uppercase tracking-wide">{p.position || ""}</span>
 
                     {(ev.goals > 0 || ev.assists > 0) && (
                       <span className="inline-flex items-center gap-1 text-[11px] text-gray-700">
@@ -562,24 +584,16 @@ const TeamLineupCard = ({
                     {(ev.yellow > 0 || ev.red > 0) && (
                       <span className="inline-flex items-center gap-1">
                         {Array.from({ length: ev.yellow }).map((_, k) => (
-                          <span
-                            key={`yb-${k}`}
-                            className="w-2.5 h-3.5 bg-yellow-300 border border-yellow-600 rounded-sm"
-                          />
+                          <span key={`yb-${k}`} className="w-2.5 h-3.5 bg-yellow-300 border border-yellow-600 rounded-sm" />
                         ))}
                         {Array.from({ length: ev.red }).map((_, k) => (
-                          <span
-                            key={`rb-${k}`}
-                            className="w-2.5 h-3.5 bg-red-500 border border-red-700 rounded-sm"
-                          />
+                          <span key={`rb-${k}`} className="w-2.5 h-3.5 bg-red-500 border border-red-700 rounded-sm" />
                         ))}
                       </span>
                     )}
 
                     {rating != null && (
-                      <span
-                        className={`text-[11px] font-semibold rounded px-1 ${ratingClass}`}
-                      >
+                      <span className={`text-[11px] font-semibold rounded px-1 ${ratingClass}`}>
                         {rating.toFixed(1)}
                       </span>
                     )}
@@ -607,12 +621,20 @@ const normalizeLineupsResponse = (raw) => {
 /* ===== Fallback admin rapide ===== */
 const normalizeQuickAdminToFlat = (quick, matchId) => {
   if (!quick || typeof quick !== "object") return [];
-  const { home, away } = quick;
+  const { home = {}, away = {} } = quick;
+  const parseClub = (c) => {
+    if (c == null) return null;
+    const n = Number(c);
+    return Number.isFinite(n) ? n : c;
+  };
+  const homeClubId = parseClub(home.club_id ?? home.club);
+  const awayClubId = parseClub(away.club_id ?? away.club);
+
   const pick = (arr, clubId, is_starting) =>
-    (arr || []).map((r) => ({
-      id: r.id,
+    (arr || []).map((r, idx) => ({
+      id: r.id ?? null,
       match: Number(matchId),
-      club: Number(clubId),
+      club: Number.isFinite(Number(clubId)) ? Number(clubId) : clubId,
       is_starting: !!r.is_starting,
       player_name: r.name || "",
       number: r.number ?? null,
@@ -621,12 +643,14 @@ const normalizeQuickAdminToFlat = (quick, matchId) => {
       rating: r.rating ?? null,
       photo: null,
       player_photo: null,
+      seq: r.seq ?? idx, // FALLBACK : ordre stable
     }));
+
   return [
-    ...pick(home?.xi, home?.club_id, true),
-    ...pick(home?.bench, home?.club_id, false),
-    ...pick(away?.xi, home?.club_id, true),
-    ...pick(away?.bench, home?.club_id, false),
+    ...pick(home?.xi, homeClubId, true),
+    ...pick(home?.bench, homeClubId, false),
+    ...pick(away?.xi, awayClubId, true),
+    ...pick(away?.bench, awayClubId, false),
   ];
 };
 
@@ -638,32 +662,18 @@ const toName = (p = {}) =>
 const toNum = (p = {}) =>
   p.number ?? p.shirt_number ?? p.jersey_number ?? p.no ?? null;
 const toPos = (p = {}) => p.position || p.pos || p.role || "";
-const toPhoto = (p = {}) =>
-  p.photo || p.player_photo || p.picture || p.image_url || null;
+const toPhoto = (p = {}) => p.photo || p.player_photo || p.picture || p.image_url || null;
 
 function deriveLineupsFromMatch(m) {
   if (!m) return { items: [], meta: {} };
-  const pick = (...keys) =>
-    keys.map((k) => m?.[k]).find((v) => Array.isArray(v)) || [];
-  const homeStarters = pick(
-    "home_lineup",
-    "home_xi",
-    "home_starting",
-    "home_players_starting",
-    "home_players"
-  );
-  const homeSubs = pick("home_subs", "home_bench", "home_reserves");
-  const awayStarters = pick(
-    "away_lineup",
-    "away_xi",
-    "away_starting",
-    "away_players_starting",
-    "away_players"
-  );
-  const awaySubs = pick("away_subs", "away_bench", "away_reserves");
+  const pick = (...keys) => keys.map((k) => m?.[k]).find((v) => Array.isArray(v)) || [];
+  const homeStarters = pick("home_lineup","home_xi","home_starting","home_players_starting","home_players");
+  const homeSubs = pick("home_subs","home_bench","home_reserves");
+  const awayStarters = pick("away_lineup","away_xi","away_starting","away_players_starting","away_players");
+  const awaySubs = pick("away_subs","away_bench","away_reserves");
 
   const normalize = (arr, clubId, is_starting) =>
-    (arr || []).map((p) => ({
+    (arr || []).map((p, idx) => ({
       id: p.id,
       club: clubId,
       is_starting,
@@ -673,9 +683,8 @@ function deriveLineupsFromMatch(m) {
       photo: toPhoto(p),
       is_captain: !!(p.captain || p.is_captain),
       rating: p.rating ?? p.note ?? null,
-      player_id:
-        p.player_id ??
-        (typeof p.player === "number" ? p.player : p.player?.id),
+      player_id: p.player_id ?? (typeof p.player === "number" ? p.player : p.player?.id),
+      seq: p.seq ?? idx,
     }));
 
   const items = [
@@ -705,13 +714,23 @@ export default function MatchDetail() {
   const [error, setError] = useState(null);
 
   const [tab, setTab] = useState("events");
-  const [lineups, setLineups] = useState([]);
+  const [lineups, setLineups] = useState([]); // tableau plat d'items
   const [loadingCompo, setLoadingCompo] = useState(false);
   const [derived, setDerived] = useState({ items: [], meta: {} });
   const [teamInfo, setTeamInfo] = useState({
     home: { formation: null, coach_name: null },
     away: { formation: null, coach_name: null },
   });
+
+  // helper to produce a stable key for a lineup item (to match with local state)
+  const lineupKey = (it) => {
+    if (!it) return null;
+    if (it.player_id != null) return `pid:${it.player_id}`;
+    if (it.player != null && typeof it.player === "number") return `pid:${it.player}`;
+    if (it.id != null) return `id:${it.id}`;
+    if (it.player_name) return `name:${String(it.player_name).trim().toLowerCase()}`;
+    return null;
+  };
 
   useEffect(() => {
     setLoad(true);
@@ -720,7 +739,15 @@ export default function MatchDetail() {
       .then((res) => {
         setM(res.data);
         const fromDetail = normalizeLineupsResponse(res.data?.lineups);
-        if (fromDetail.length) setLineups(fromDetail);
+        if (fromDetail.length) {
+          // si lineups fournis, préserver l'ordre tel que renvoyé par le serveur,
+          // mais garantir seq stable (fallback index) — on ne force pas un tri supplémentaire
+          const items = fromDetail.slice().map((it, idx) => ({
+            ...it,
+            seq: Number.isFinite(Number(it.seq)) ? Number(it.seq) : idx,
+          }));
+          setLineups(items);
+        }
       })
       .catch((e) => setError(e.message || "Erreur"))
       .finally(() => setLoad(false));
@@ -730,7 +757,14 @@ export default function MatchDetail() {
     if (!m) return;
     const d = deriveLineupsFromMatch(m);
     setDerived(d);
-    if (!lineups.length && d.items.length) setLineups(d.items);
+    if (!lineups.length && d.items.length) {
+      // garder l'ordre renvoyé par deriveLineupsFromMatch mais garantir seq stable
+      const items = d.items.slice().map((it, idx) => ({
+        ...it,
+        seq: Number.isFinite(Number(it.seq)) ? Number(it.seq) : idx,
+      }));
+      setLineups(items);
+    }
 
     api
       .get(`matches/${id}/team-info/`)
@@ -752,7 +786,6 @@ export default function MatchDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [m, id]);
 
-  // Nouveau : dérive le badge LIVE / HT / FT (et plus de chrono)
   const rawStatus = (m?.status || "").toUpperCase().trim();
   let badgeLabel = null;
   if (
@@ -774,8 +807,8 @@ export default function MatchDetail() {
     rawStatus.includes("2ND HALF") ||
     rawStatus.includes("FIRST HALF") ||
     rawStatus.includes("1ST HALF") ||
-    rawStatus.includes("2ND") ||
-    rawStatus.includes("1ST")
+    rawStatus.includes("1ST") ||
+    rawStatus.includes("2ND")
   ) {
     badgeLabel = "LIVE";
   }
@@ -792,7 +825,44 @@ export default function MatchDetail() {
         });
         items = normalizeQuickAdminToFlat(alt.data, id);
       }
-      if (items.length) setLineups(items);
+
+      if (items && items.length) {
+        // --- Merge seq from local `lineups` state when possible (preserve user's order) ---
+        const existingMap = {};
+        (lineups || []).forEach((it) => {
+          const k = lineupKey(it);
+          if (k) existingMap[k] = it;
+        });
+
+        // compute stable seq for each incoming item:
+        const incoming = items.slice().map((it, idx) => {
+          const k = lineupKey(it);
+          let seq = null;
+          if (k && existingMap[k] && Number.isFinite(Number(existingMap[k].seq))) {
+            // reuse seq previously stored locally
+            seq = Number(existingMap[k].seq);
+          } else if (Number.isFinite(Number(it.seq))) {
+            seq = Number(it.seq);
+          } else {
+            seq = idx; // fallback stable index
+          }
+          return { ...it, seq };
+        });
+
+        // final sort by seq ascending (stable)
+        incoming.sort((a, b) => (Number(a.seq ?? 0) - Number(b.seq ?? 0)));
+
+        // ensure seq are compact/unique to avoid ties (reassign if duplicates)
+        const seen = new Set();
+        const normalized = incoming.map((it, i) => {
+          let s = Number(it.seq ?? i);
+          while (seen.has(s)) s = s + 1;
+          seen.add(s);
+          return { ...it, seq: s };
+        });
+
+        setLineups(normalized);
+      }
 
       const ti = await api.get(`matches/${id}/team-info/`);
       const h = ti.data?.home || {};
@@ -801,7 +871,9 @@ export default function MatchDetail() {
         home: { formation: h.formation || null, coach_name: h.coach_name || null },
         away: { formation: a.formation || null, coach_name: a.coach_name || null },
       });
-    } catch {}
+    } catch (e) {
+      // ignore silently
+    }
     setLoadingCompo(false);
   };
 
@@ -819,18 +891,32 @@ export default function MatchDetail() {
     window.scrollTo({ top: y < 0 ? 0 : y, behavior: "smooth" });
   };
 
-  const homeStarters = (lineups || []).filter(
-    (p) => clubEq(p, m?.home_club) && isStarting(p)
-  );
-  const homeSubs = (lineups || []).filter(
-    (p) => clubEq(p, m?.home_club) && !isStarting(p)
-  );
-  const awayStarters = (lineups || []).filter(
-    (p) => clubEq(p, m?.away_club) && isStarting(p)
-  );
-  const awaySubs = (lineups || []).filter(
-    (p) => clubEq(p, m?.away_club) && !isStarting(p)
-  );
+  // Avant d'extraire starters/subs, s'assurer que `lineups` est trié par seq
+  const sortedLineups = useMemo(() => {
+    if (!Array.isArray(lineups)) return [];
+    const copy = lineups.slice().map((it, idx) => ({
+      ...it,
+      seq: Number.isFinite(Number(it.seq)) ? Number(it.seq) : idx,
+    }));
+    // sort by seq ascending; seqs have been normalized at ingestion
+    return copy.sort((a, b) => (Number(a.seq ?? 0) - Number(b.seq ?? 0)));
+  }, [lineups]);
+
+  // Sépare home/away et starting/subs, puis enforce positions by order
+  const homeStarters = useMemo(() => {
+    const arr = (sortedLineups || []).filter((p) => clubEq(p, m?.home_club) && isStarting(p));
+    // Important : on applique l'enforcement sur l'ordre d'apparition (après tri seq)
+    return enforcePositionsByOrder(arr);
+  }, [sortedLineups, m]);
+
+  const homeSubs = useMemo(() => (sortedLineups || []).filter((p) => clubEq(p, m?.home_club) && !isStarting(p)), [sortedLineups, m]);
+
+  const awayStarters = useMemo(() => {
+    const arr = (sortedLineups || []).filter((p) => clubEq(p, m?.away_club) && isStarting(p));
+    return enforcePositionsByOrder(arr);
+  }, [sortedLineups, m]);
+
+  const awaySubs = useMemo(() => (sortedLineups || []).filter((p) => clubEq(p, m?.away_club) && !isStarting(p)), [sortedLineups, m]);
 
   const globalMotmId = useMemo(() => {
     const starters = [...homeStarters, ...awayStarters];
@@ -847,26 +933,14 @@ export default function MatchDetail() {
   }, [homeStarters, awayStarters]);
 
   const homeFormation =
-    teamInfo.home.formation ||
-    derived.meta.homeFormation ||
-    m?.home_formation ||
-    m?.formation;
+    teamInfo.home.formation || derived.meta.homeFormation || m?.home_formation || m?.formation;
   const awayFormation =
-    teamInfo.away.formation ||
-    derived.meta.awayFormation ||
-    m?.away_formation ||
-    m?.formation;
+    teamInfo.away.formation || derived.meta.awayFormation || m?.away_formation || m?.formation;
 
   const homeCoach =
-    teamInfo.home.coach_name ||
-    derived.meta.homeCoach ||
-    m?.home_coach_name ||
-    m?.home_coach;
+    teamInfo.home.coach_name || derived.meta.homeCoach || m?.home_coach_name || m?.home_coach;
   const awayCoach =
-    teamInfo.away.coach_name ||
-    derived.meta.awayCoach ||
-    m?.away_coach_name ||
-    m?.away_coach;
+    teamInfo.away.coach_name || derived.meta.awayCoach || m?.away_coach_name || m?.away_coach;
 
   /* ---------- Timeline (évènements) ---------- */
   const _truthy = (v) =>
@@ -936,9 +1010,7 @@ export default function MatchDetail() {
       onHomeSide: Number(c.club ?? c.club_id) === homeId,
     }));
 
-    return [...goals, ...cards].sort(
-      (a, b) => (a.minute ?? 0) - (b.minute ?? 0)
-    );
+    return [...goals, ...cards].sort((a, b) => (a.minute ?? 0) - (b.minute ?? 0));
   }, [m]);
 
   const eventStats = useMemo(() => buildEventStats(m || {}), [m]);
@@ -1009,9 +1081,7 @@ export default function MatchDetail() {
                   type="button"
                   onClick={() => onClickTab(key)}
                   className={`relative -mb-px py-3 text-sm font-semibold tracking-wide transition ${
-                    isActive
-                      ? "text-emerald-700"
-                      : "text-gray-600 hover:text-gray-900"
+                    isActive ? "text-emerald-700" : "text-gray-600 hover:text-gray-900"
                   }`}
                 >
                   {label}
@@ -1034,9 +1104,7 @@ export default function MatchDetail() {
             <h2 id="events-panel" className="text-lg font-semibold mb-3">
               Événements
             </h2>
-            {!timeline.length && (
-              <p className="text-gray-500">Aucun événement pour le moment.</p>
-            )}
+            {!timeline.length && <p className="text-gray-500">Aucun événement pour le moment.</p>}
 
             <div className="divide-y">
               {timeline.map((ev, idx) => {
@@ -1052,49 +1120,27 @@ export default function MatchDetail() {
                   const pId = getEventPlayerId(g);
 
                   return (
-                    <div
-                      key={`g-${idx}-${min}`}
-                      className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 py-2"
-                    >
+                    <div key={`g-${idx}-${min}`} className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 py-2">
                       {/* Côté home */}
                       <div className="flex items-start gap-2 min-w-0">
                         {ev.onHomeSide && (
                           <>
-                            {/* minute */}
-                            <span className="text-sm text-gray-500 tabular-nums shrink-0">
-                              {min}'
-                            </span>
+                            <span className="text-sm text-gray-500 tabular-nums shrink-0">{min}'</span>
 
-                            {/* avatar */}
-                            <TinyAvatar
-                              src={pPhoto}
-                              alt={pFull}
-                              size={32}
-                              onClick={pId ? () => openSheet(pId) : undefined}
-                            />
+                            <TinyAvatar src={pPhoto} alt={pFull} size={32} onClick={pId ? () => openSheet(pId) : undefined} />
 
-                            {/* bloc texte */}
                             <div className="min-w-0">
-                              {/* nom + ballon => 1 seule ligne */}
                               <div className="flex items-center flex-nowrap gap-2 min-w-0">
-                                <span
-                                  className="font-medium text-[10px] sm:text-[10px] whitespace-nowrap text-gray-900"
-                                  style={{ letterSpacing: "-0.2px" }}
-                                  title={pFull}
-                                >
+                                <span className="font-medium text-[10px] sm:text-[10px] whitespace-nowrap text-gray-900" style={{ letterSpacing: "-0.2px" }} title={pFull}>
                                   {pShort}
                                   {goalTag(g)}
                                 </span>
                                 <BallIcon size={14} />
                               </div>
 
-                              {/* passeur */}
                               {aFull && (
                                 <div className="mt-1 flex items-center flex-nowrap gap-1 text-[10px] text-gray-500 leading-none">
-                                  <span
-                                    className="truncate max-w-[140px]"
-                                    title={aFull}
-                                  >
+                                  <span className="truncate max-w-[140px]" title={aFull}>
                                     {aShort}
                                   </span>
                                   <AssistIconImg />
@@ -1105,30 +1151,19 @@ export default function MatchDetail() {
                         )}
                       </div>
 
-                      {/* col vide pour garder la grille symétrique */}
                       <div className="text-center text-sm text-gray-600" />
 
                       {/* Côté away */}
                       <div className="flex items-start gap-2 justify-end min-w-0">
                         {!ev.onHomeSide && (
                           <>
-                            <span className="text-sm text-gray-500 tabular-nums shrink-0">
-                              {min}'
-                            </span>
+                            <span className="text-sm text-gray-500 tabular-nums shrink-0">{min}'</span>
 
-                            <TinyAvatar
-                              src={pPhoto}
-                              alt={pFull}
-                              size={32}
-                              onClick={pId ? () => openSheet(pId) : undefined}
-                            />
+                            <TinyAvatar src={pPhoto} alt={pFull} size={32} onClick={pId ? () => openSheet(pId) : undefined} />
 
                             <div className="min-w-0 text-right">
                               <div className="flex items-center flex-nowrap gap-2 whitespace-nowrap justify-end">
-                                <span
-                                  className="font-medium text-[10px] leading-none truncate max-w-[160px] text-right"
-                                  title={pFull}
-                                >
+                                <span className="font-medium text-[10px] leading-none truncate max-w-[160px] text-right" title={pFull}>
                                   {pShort}
                                   {goalTag(g)}
                                 </span>
@@ -1137,10 +1172,7 @@ export default function MatchDetail() {
 
                               {aFull && (
                                 <div className="mt-1 flex items-center flex-nowrap gap-1 text-[10px] text-gray-500 leading-none justify-end">
-                                  <span
-                                    className="truncate max-w-[140px] text-right"
-                                    title={aFull}
-                                  >
+                                  <span className="truncate max-w-[140px] text-right" title={aFull}>
                                     {aShort}
                                   </span>
                                   <AssistIconImg />
@@ -1163,37 +1195,19 @@ export default function MatchDetail() {
                 const pId = getEventPlayerId(c);
 
                 return (
-                  <div
-                    key={`c-${idx}-${min}`}
-                    className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 py-2"
-                  >
-                    {/* Côté home */}
+                  <div key={`c-${idx}-${min}`} className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 py-2">
                     <div className="flex items-start gap-2 min-w-0">
                       {ev.onHomeSide && (
                         <>
-                          <span className="text-sm text-gray-500 tabular-nums shrink-0">
-                            {min}'
-                          </span>
+                          <span className="text-sm text-gray-500 tabular-nums shrink-0">{min}'</span>
 
-                          {/* carte */}
-                          <span className="inline-flex items-center justify-center w-5 h-5 leading-none shrink-0">
-                            {emoji}
-                          </span>
+                          <span className="inline-flex items-center justify-center w-5 h-5 leading-none shrink-0">{emoji}</span>
 
-                          <TinyAvatar
-                            src={cPhoto}
-                            alt={pFull}
-                            size={32}
-                            onClick={pId ? () => openSheet(pId) : undefined}
-                          />
+                          <TinyAvatar src={cPhoto} alt={pFull} size={32} onClick={pId ? () => openSheet(pId) : undefined} />
 
-                          {/* nom joueur sur UNE ligne */}
                           <div className="min-w-0">
                             <div className="flex items-center flex-nowrap gap-1 text-[10px] font-medium text-gray-900 leading-none whitespace-nowrap">
-                              <span
-                                className="truncate max-w-[160px]"
-                                title={pFull}
-                              >
+                              <span className="truncate max-w-[160px]" title={pFull}>
                                 {pShort}
                               </span>
                             </div>
@@ -1202,34 +1216,20 @@ export default function MatchDetail() {
                       )}
                     </div>
 
-                    {/* col vide */}
                     <div className="text-center text-sm text-gray-600" />
 
-                    {/* Côté away */}
                     <div className="flex items-start gap-2 justify-end min-w-0">
                       {!ev.onHomeSide && (
                         <>
-                          <span className="text-sm text-gray-500 tabular-nums shrink-0">
-                            {min}'
-                          </span>
+                          <span className="text-sm text-gray-500 tabular-nums shrink-0">{min}'</span>
 
-                          <span className="inline-flex items-center justify-center w-5 h-5 leading-none shrink-0">
-                            {emoji}
-                          </span>
+                          <span className="inline-flex items-center justify-center w-5 h-5 leading-none shrink-0">{emoji}</span>
 
-                          <TinyAvatar
-                            src={cPhoto}
-                            alt={pFull}
-                            size={32}
-                            onClick={pId ? () => openSheet(pId) : undefined}
-                          />
+                          <TinyAvatar src={cPhoto} alt={pFull} size={32} onClick={pId ? () => openSheet(pId) : undefined} />
 
                           <div className="min-w-0 text-right">
                             <div className="flex items-center flex-nowrap gap-1 text-[10px] font-medium text-gray-900 leading-none whitespace-nowrap justify-end">
-                              <span
-                                className="truncate max-w-[160px] text-right"
-                                title={pFull}
-                              >
+                              <span className="truncate max-w-[160px] text-right" title={pFull}>
                                 {pShort}
                               </span>
                             </div>
@@ -1264,7 +1264,7 @@ export default function MatchDetail() {
                 teamAvg={m.avg_rating_home}
                 motmId={globalMotmId}
                 evStats={eventStats}
-                chipScale={0.55} // <-- RÉDUCTION visuelle sur le terrain
+                chipScale={0.55}
               />
               <TeamLineupCard
                 title={m.away_club_name}
@@ -1276,7 +1276,7 @@ export default function MatchDetail() {
                 teamAvg={m.avg_rating_away}
                 motmId={globalMotmId}
                 evStats={eventStats}
-                chipScale={0.55} // <-- pareil
+                chipScale={0.55}
               />
             </div>
           </div>

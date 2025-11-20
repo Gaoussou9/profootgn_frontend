@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import api from "../api/client";
+import fetchAllPagesAxios from "../utils/fetchAllPages"; // <- axios helper
 import { usePlayerSheet } from "../components/PlayerSheet"; // ✅ fiche joueur
 import { useStaffSheet } from "../components/StaffSheet";   // ✅ fiche staff
 
@@ -82,7 +83,7 @@ const stat = (obj, keys) => {
   for (const k of keys) {
     const v = obj?.[k];
     if (v !== undefined && v !== null && v !== "") return v;
-    }
+  }
   return "0";
 };
 
@@ -144,47 +145,26 @@ export default function ClubDetail() {
         if (stop) return;
         setClub(c);
 
-        // Joueurs — fetch all pages (robuste contre pagination côté serveur)
-try {
-  const playersAccum = [];
-  let nextUrl = `players/?club=${id}&active=1&ordering=number&page_size=1000`;
-  // page_size=100 ici pour limiter la charge, tu peux augmenter si nécessaire
-
-  while (nextUrl) {
-    // si `api` est un axios préconfiguré avec baseURL, on peut appeler api.get(nextUrl)
-    const res = await api.get(nextUrl);
-    const data = res.data;
-    // DRF-style: { count, next, previous, results }
-    if (Array.isArray(data?.results)) {
-      playersAccum.push(...data.results);
-      // next peut être une URL complète ou un path relatif
-      if (data.next) {
-        // si next est absolue : on veut l'appeler via l'instance `api`
-        // essayer d'extraire la partie relative si besoin
-        const parsed = new URL(data.next, window.location.origin);
-        nextUrl = parsed.pathname + parsed.search;
-      } else {
-        nextUrl = null;
-      }
-    } else if (Array.isArray(data)) {
-      // si l'API renvoie directement une liste (non paginée)
-      playersAccum.push(...data);
-      nextUrl = null;
-    } else {
-      nextUrl = null;
-    }
-  }
-
-  if (!stop) setPlayers(playersAccum);
-} catch {
-  // fallback: essayer une requête sans active
-  // Remplacer la requête simple par :
-const r = await api.get(`players/?club=${id}&active=1&ordering=number&page_size=1000`);
-const arr = Array.isArray(r.data) ? r.data : r.data?.results || [];
-if (!stop && Array.isArray(arr)) setPlayers(arr);
-
-}
-
+        // Joueurs - NOUVEAU: utilisation de fetchAllPagesAxios (axios) pour suivre "next"
+        try {
+          const initial = `/api/players/?club=${id}&active=1&ordering=number`;
+          // fetchAllPagesAxios utilise api (axios) et suit `data.next`
+          const all = await fetchAllPagesAxios(initial);
+          if (!stop && Array.isArray(all)) {
+            console.log("[ClubDetail] loaded players total =", all.length);
+            setPlayers(all);
+          }
+        } catch (e) {
+          console.warn("[ClubDetail] fetchAllPagesAxios failed, fallback to single page", e);
+          // fallback sans pagination: récupérer la page 1 via api.get
+          try {
+            const r2 = await api.get(`players/?club=${id}&ordering=number`);
+            const arr2 = Array.isArray(r2.data) ? r2.data : r2.data?.results || [];
+            if (!stop && Array.isArray(arr2)) setPlayers(arr2);
+          } catch {
+            if (!stop) setPlayers([]);
+          }
+        }
 
         // Staff
         try {
