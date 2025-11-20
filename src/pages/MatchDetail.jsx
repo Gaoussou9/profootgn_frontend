@@ -358,23 +358,25 @@ function enforcePositionsByOrder(arr) {
 }
 
 const makeLines = (starters, formationStr) => {
-  // IMPORTANT : ne pas resorter par number ici — on veut conserver l'ordre d'entrée (seq).
-  // choisir gardien : d'abord celui dont position commence par G sinon le premier.
-  const GK = (starters || []).find((p) =>
+  const GK = starters.filter((p) =>
     (p.position || "").toUpperCase().startsWith("G")
   );
-  // tous les autres, dans l'ordre donné (seq/order)
-  const field = (starters || []).filter(
+  // tous les autres
+  const field = starters.filter(
     (p) => !(p.position || "").toUpperCase().startsWith("G")
   );
-
-  const counts = parseFormation(formationStr, starters || []);
+  field.sort(
+    (a, b) =>
+      (a.number ?? 999) - (b.number ?? 999) ||
+      String(displayName(a)).localeCompare(String(displayName(b)))
+  );
+  const counts = parseFormation(formationStr, starters);
   const lines = [];
   lines.push(field.splice(0, counts[0])); // défense
   lines.push(field.splice(0, counts[1])); // milieux
   lines.push(field.splice(0, counts[2])); // attaque
   if (field.length) lines.splice(1, 0, field); // si éléments restants, les insérer au milieu
-  return { gk: GK || null, rows: lines };
+  return { gk: GK[0] || null, rows: lines };
 };
 
 const Pitch = ({ children }) => (
@@ -641,7 +643,7 @@ const normalizeQuickAdminToFlat = (quick, matchId) => {
       rating: r.rating ?? null,
       photo: null,
       player_photo: null,
-      seq: r.seq ?? idx, // FALLBACK : ordre stable à partir de l'ordre reçu
+      seq: r.seq ?? idx, // FALLBACK : ordre stable
     }));
 
   return [
@@ -720,6 +722,16 @@ export default function MatchDetail() {
     away: { formation: null, coach_name: null },
   });
 
+  // helper to produce a stable key for a lineup item (to match with local state)
+  const lineupKey = (it) => {
+    if (!it) return null;
+    if (it.player_id != null) return `pid:${it.player_id}`;
+    if (it.player != null && typeof it.player === "number") return `pid:${it.player}`;
+    if (it.id != null) return `id:${it.id}`;
+    if (it.player_name) return `name:${String(it.player_name).trim().toLowerCase()}`;
+    return null;
+  };
+
   useEffect(() => {
     setLoad(true);
     api
@@ -728,15 +740,13 @@ export default function MatchDetail() {
         setM(res.data);
         const fromDetail = normalizeLineupsResponse(res.data?.lineups);
         if (fromDetail.length) {
-          // si lineups fournis, tri par seq si présent
-          const items = fromDetail.slice();
-          items.sort((a, b) => (Number(a.seq ?? 0) - Number(b.seq ?? 0)));
-          // garantir seq stables
-          const withSeq = items.map((it, idx) => ({
+          // si lineups fournis, préserver l'ordre tel que renvoyé par le serveur,
+          // mais garantir seq stable (fallback index) — on ne force pas un tri supplémentaire
+          const items = fromDetail.slice().map((it, idx) => ({
             ...it,
             seq: Number.isFinite(Number(it.seq)) ? Number(it.seq) : idx,
           }));
-          setLineups(withSeq);
+          setLineups(items);
         }
       })
       .catch((e) => setError(e.message || "Erreur"))
@@ -748,38 +758,12 @@ export default function MatchDetail() {
     const d = deriveLineupsFromMatch(m);
     setDerived(d);
     if (!lineups.length && d.items.length) {
-      // tri stable : prefer seq if present, else id asc, else keep provided order
-      const items = d.items.slice();
-      const hasSeq = items.some((it) => it.seq != null);
-      const allHaveId = items.every((it) => it.id != null);
-      const withOrig = items.map((it, idx) => ({ ...it, __origIdx: idx }));
-
-      if (hasSeq) {
-        withOrig.sort((a, b) => {
-          const sa = Number.isFinite(Number(a.seq)) ? Number(a.seq) : 9999 + a.__origIdx;
-          const sb = Number.isFinite(Number(b.seq)) ? Number(b.seq) : 9999 + b.__origIdx;
-          if (sa !== sb) return sa - sb;
-          // fallback by id then orig
-          const ida = Number(a.id || 0);
-          const idb = Number(b.id || 0);
-          if (ida !== idb) return ida - idb;
-          return a.__origIdx - b.__origIdx;
-        });
-        // set seq stable numbers
-        const stable = withOrig.map((it, idx) => ({
-          ...it,
-          seq: Number.isFinite(Number(it.seq)) ? Number(it.seq) : idx,
-        }));
-        setLineups(stable);
-      } else if (allHaveId) {
-        withOrig.sort((a, b) => Number(a.id) - Number(b.id));
-        const stable = withOrig.map((it, idx) => ({ ...it, seq: Number(it.id) }));
-        setLineups(stable);
-      } else {
-        // keep order as returned by the match detail, fallback seq = orig idx
-        const stable = withOrig.map((it) => ({ ...it, seq: it.__origIdx }));
-        setLineups(stable);
-      }
+      // garder l'ordre renvoyé par deriveLineupsFromMatch mais garantir seq stable
+      const items = d.items.slice().map((it, idx) => ({
+        ...it,
+        seq: Number.isFinite(Number(it.seq)) ? Number(it.seq) : idx,
+      }));
+      setLineups(items);
     }
 
     api
@@ -842,37 +826,42 @@ export default function MatchDetail() {
         items = normalizeQuickAdminToFlat(alt.data, id);
       }
 
-      // **TRI stable** : centralisé ici
       if (items && items.length) {
-        // attach original index
-        const withOrig = items.map((it, idx) => ({ ...it, __origIdx: idx }));
-        const hasSeq = withOrig.some((it) => it.seq != null);
-        const allHaveId = withOrig.every((it) => it.id != null);
+        // --- Merge seq from local `lineups` state when possible (preserve user's order) ---
+        const existingMap = {};
+        (lineups || []).forEach((it) => {
+          const k = lineupKey(it);
+          if (k) existingMap[k] = it;
+        });
 
-        if (hasSeq) {
-          withOrig.sort((a, b) => {
-            const sa = Number.isFinite(Number(a.seq)) ? Number(a.seq) : 9999 + a.__origIdx;
-            const sb = Number.isFinite(Number(b.seq)) ? Number(b.seq) : 9999 + b.__origIdx;
-            if (sa !== sb) return sa - sb;
-            const ida = Number(a.id || 0);
-            const idb = Number(b.id || 0);
-            if (ida !== idb) return ida - idb;
-            return a.__origIdx - b.__origIdx;
-          });
-          // set seq stable numbers
-          items = withOrig.map((it, idx) => ({
-            ...it,
-            seq: Number.isFinite(Number(it.seq)) ? Number(it.seq) : idx,
-          }));
-        } else if (allHaveId) {
-          withOrig.sort((a, b) => Number(a.id) - Number(b.id));
-          items = withOrig.map((it) => ({ ...it, seq: Number(it.id) }));
-        } else {
-          // keep order as given by the API response
-          items = withOrig.map((it, idx) => ({ ...it, seq: idx }));
-        }
+        // compute stable seq for each incoming item:
+        const incoming = items.slice().map((it, idx) => {
+          const k = lineupKey(it);
+          let seq = null;
+          if (k && existingMap[k] && Number.isFinite(Number(existingMap[k].seq))) {
+            // reuse seq previously stored locally
+            seq = Number(existingMap[k].seq);
+          } else if (Number.isFinite(Number(it.seq))) {
+            seq = Number(it.seq);
+          } else {
+            seq = idx; // fallback stable index
+          }
+          return { ...it, seq };
+        });
 
-        setLineups(items);
+        // final sort by seq ascending (stable)
+        incoming.sort((a, b) => (Number(a.seq ?? 0) - Number(b.seq ?? 0)));
+
+        // ensure seq are compact/unique to avoid ties (reassign if duplicates)
+        const seen = new Set();
+        const normalized = incoming.map((it, i) => {
+          let s = Number(it.seq ?? i);
+          while (seen.has(s)) s = s + 1;
+          seen.add(s);
+          return { ...it, seq: s };
+        });
+
+        setLineups(normalized);
       }
 
       const ti = await api.get(`matches/${id}/team-info/`);
@@ -905,32 +894,12 @@ export default function MatchDetail() {
   // Avant d'extraire starters/subs, s'assurer que `lineups` est trié par seq
   const sortedLineups = useMemo(() => {
     if (!Array.isArray(lineups)) return [];
-    // copy with orig index
     const copy = lineups.slice().map((it, idx) => ({
       ...it,
-      __origIdx: idx,
       seq: Number.isFinite(Number(it.seq)) ? Number(it.seq) : idx,
     }));
-    // compute same stable key as above
-    const hasSeq = copy.some((it) => it.seq != null);
-    const allHaveId = copy.every((it) => it.id != null);
-    if (hasSeq) {
-      copy.sort((a, b) => {
-        const sa = Number.isFinite(Number(a.seq)) ? Number(a.seq) : 9999 + a.__origIdx;
-        const sb = Number.isFinite(Number(b.seq)) ? Number(b.seq) : 9999 + b.__origIdx;
-        if (sa !== sb) return sa - sb;
-        const ida = Number(a.id || 0);
-        const idb = Number(b.id || 0);
-        if (ida !== idb) return ida - idb;
-        return a.__origIdx - b.__origIdx;
-      });
-      return copy;
-    } else if (allHaveId) {
-      copy.sort((a, b) => Number(a.id) - Number(b.id));
-      return copy;
-    }
-    // else keep API order (seq defaults to orig idx)
-    return copy;
+    // sort by seq ascending; seqs have been normalized at ingestion
+    return copy.sort((a, b) => (Number(a.seq ?? 0) - Number(b.seq ?? 0)));
   }, [lineups]);
 
   // Sépare home/away et starting/subs, puis enforce positions by order
