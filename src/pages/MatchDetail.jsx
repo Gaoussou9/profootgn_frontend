@@ -850,7 +850,10 @@ export default function MatchDetail() {
         });
 
         // final sort by seq ascending (stable)
-        incoming.sort((a, b) => (Number(a.seq ?? 0) - Number(b.seq ?? 0)));
+       const seqVal = (x) => (x == null ? Number.MAX_SAFE_INTEGER : Number(x));
+// final sort by seq ascending (stable)
+incoming.sort((a, b) => seqVal(a.seq) - seqVal(b.seq));
+
 
         // ensure seq are compact/unique to avoid ties (reassign if duplicates)
         const seen = new Set();
@@ -860,6 +863,13 @@ export default function MatchDetail() {
           seen.add(s);
           return { ...it, seq: s };
         });
+// debug: inspect seqs returned/assigned (remove in prod when stable)
+console.debug("lineups: incoming keys+seq:", incoming.map(it => ({
+  key: lineupKey(it),
+  seq: it.seq,
+  number: it.number,
+  player_name: it.player_name
+})));
 
         setLineups(normalized);
       }
@@ -899,7 +909,9 @@ export default function MatchDetail() {
       seq: Number.isFinite(Number(it.seq)) ? Number(it.seq) : idx,
     }));
     // sort by seq ascending; seqs have been normalized at ingestion
-    return copy.sort((a, b) => (Number(a.seq ?? 0) - Number(b.seq ?? 0)));
+   const seqVal = (x) => (x == null ? Number.MAX_SAFE_INTEGER : Number(x));
+return copy.sort((a, b) => seqVal(a.seq) - seqVal(b.seq));
+
   }, [lineups]);
 
   // Sépare home/away et starting/subs, puis enforce positions by order
