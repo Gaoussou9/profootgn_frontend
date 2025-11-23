@@ -1,4 +1,3 @@
-// src/pages/MatchDetail.jsx
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import api from "../api/client";
@@ -361,15 +360,35 @@ const makeLines = (starters, formationStr) => {
   const GK = starters.filter((p) =>
     (p.position || "").toUpperCase().startsWith("G")
   );
-  // tous les autres
+
+  // tous les autres (field players)
   const field = starters.filter(
     (p) => !(p.position || "").toUpperCase().startsWith("G")
   );
-  field.sort(
-    (a, b) =>
-      (a.number ?? 999) - (b.number ?? 999) ||
-      String(displayName(a)).localeCompare(String(displayName(b)))
-  );
+
+  // ---- Improved sort: position priority (D -> M -> F), then seq (insertion order), then name ----
+  const posPriority = (pos) => {
+    const s = (pos || "").toString().trim().toUpperCase();
+    if (!s) return 25; // unknown in the middle
+    if (s.startsWith("D")) return 10;
+    if (s.startsWith("M") || s.startsWith("C") || s.startsWith("MID")) return 20;
+    if (s.startsWith("F") || s.startsWith("A") || s.startsWith("ATT")) return 30;
+    if (s.startsWith("W")) return 22; // winger ~ midfield/attack boundary
+    return 25;
+  };
+
+  field.sort((a, b) => {
+    const pa = posPriority(a.position);
+    const pb = posPriority(b.position);
+    if (pa !== pb) return pa - pb;
+
+    const sa = Number.isFinite(Number(a.seq)) ? Number(a.seq) : Number.MAX_SAFE_INTEGER;
+    const sb = Number.isFinite(Number(b.seq)) ? Number(b.seq) : Number.MAX_SAFE_INTEGER;
+    if (sa !== sb) return sa - sb;
+
+    return String(displayName(a)).localeCompare(String(displayName(b)));
+  });
+
   const counts = parseFormation(formationStr, starters);
   const lines = [];
   lines.push(field.splice(0, counts[0])); // défense
