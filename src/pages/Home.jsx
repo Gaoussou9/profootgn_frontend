@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../api/client";
+import SilkcoatAd from "../components/SilkcoatAd";
+
 
 /* ---------- Helpers UI ---------- */
 
@@ -12,6 +14,7 @@ const Logo = ({ src, alt, size = "w-9 h-9 sm:w-10 sm:h-10" }) => (
     onError={(e) => (e.currentTarget.src = "/club-placeholder.png")}
   />
 );
+
 
 const statusClasses = (s) => {
   switch ((s || "").toUpperCase()) {
@@ -576,9 +579,20 @@ export default function Home() {
   return (
     <div className="mx-auto max-w-[480px] px-3 pb-24">
       <section className="space-y-4">
-        <header className="flex items-baseline justify-between">
-          <h1 className="text-2xl font-bold">LIGUE 1 GUICOPRES</h1>
-        </header>
+       <header className="flex items-baseline justify-between">
+  <h1 className="text-2xl font-bold">LIGUE 1 GUICOPRES</h1>
+</header>
+
+{/* --- Silkcoat Ad (place here) --- */}
+<div className="mt-4">
+  <SilkcoatAd
+  adId="silkcoat-home-1"
+  imageUrl={`/media/ads/silkcoat-banner.jpg?v=1.0.3`} // DEVELOP only
+  videoUrl="https://www.youtube.com/embed/FuoFRQKtlcs?list=PLYBN7ewOsvtzdRpsUBIm8AOjm02_herqa&t=125"
+  linkUrl="https://silkcoat.com/produits"
+/>
+</div>
+
 
         <MatchdayBar selected={round} onChange={handleRoundChange} max={26} />
 
