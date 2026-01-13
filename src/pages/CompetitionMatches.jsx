@@ -13,10 +13,11 @@ export default function CompetitionMatches({ competitionId }) {
 
     axios
       .get(`${API}/api/competitions/${competitionId}/matches/`)
-      .then(res => {
-        console.log("MATCHES:", res.data);
-        setMatches(res.data);
-      })
+     .then(res => {
+  console.log("MATCHES:", res.data.matches);
+  setMatches(res.data.matches); // ✅ CORRECT
+})
+
       .catch(err => {
         console.error("API ERROR", err);
         setMatches([]);
