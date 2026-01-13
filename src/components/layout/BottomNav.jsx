@@ -1,10 +1,11 @@
 // src/components/layout/BottomNav.jsx
 import { NavLink } from "react-router-dom";
-import { FaFutbol, FaChartBar, FaUserAlt, FaRegHandshake } from "react-icons/fa";
+import { FaFutbol, FaChartBar, FaUserAlt, FaRegHandshake, FaTrophy } from "react-icons/fa";
 import { GiGoalKeeper } from "react-icons/gi";
 
 const navItems = [
   { to: "/journees", label: "Matchs", Icon: FaFutbol },
+  { to: "/competitions", label: "Compétitions", Icon: FaTrophy }, // ✅ AJOUT
   { to: "/classement", label: "Classement", Icon: FaChartBar },
   { to: "/buteurs", label: "Buteurs", Icon: GiGoalKeeper },
   { to: "/passeurs", label: "Passeurs", Icon: FaRegHandshake },

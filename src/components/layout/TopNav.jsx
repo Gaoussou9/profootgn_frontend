@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 
 const tabs = [
   { to: "/journees", label: "Matchs" },
+  { to: "/competitions", label: "Compétitions" }, // ✅ AJOUT
   { to: "/classement", label: "Classement" },
   { to: "/buteurs", label: "Buteurs" },
   { to: "/passeurs", label: "Passeurs" },
@@ -16,22 +17,23 @@ export default function TopNav() {
     // hidden on mobile, visible from md and up
     <div className="hidden md:block sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/60">
       <div className="mx-auto max-w-4xl px-4 py-2 pt-[env(safe-area-inset-top)]">
+        
         {/* Ligne 1 — Brand */}
         <div className="flex items-center justify-between h-12">
           <Link to="/journees" className="font-extrabold tracking-tight text-slate-900">
-            ProFootGN
+            
           </Link>
 
-          {/* Optionnel: placeholder pour search / actions */}
-          <div className="flex items-center gap-3">
-            {/* leave empty for now or add icons later */}
-          </div>
+          <div className="flex items-center gap-3" />
         </div>
 
-        {/* Ligne 2 — Tabs (desktop) */}
+        {/* Ligne 2 — Tabs */}
         <div className="mt-2 flex gap-3 items-center">
           {tabs.map((t) => {
-            const active = pathname === t.to || (t.to !== "/journees" && pathname.startsWith(t.to));
+            const active =
+              pathname === t.to ||
+              (t.to !== "/journees" && pathname.startsWith(t.to));
+
             return (
               <Link
                 key={t.to}

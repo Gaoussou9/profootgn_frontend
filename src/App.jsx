@@ -1,26 +1,38 @@
-// src/App.jsx
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import Standings from "./pages/Standings.jsx";
-import TopScorers from "./pages/TopScorers.jsx";
-import MatchDetail from "./pages/MatchDetail.jsx";
-import MatchEventsEditor from "./pages/MatchEventsEditor.jsx";
-import Home from "./pages/Home.jsx";
-import Clubs from "./pages/Clubs.jsx";
-import ClubDetail from "./pages/ClubDetail.jsx";
-import AssistsLeaders from "./pages/AssistsLeaders.jsx";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+
+import Home from "./pages/Home";
+import Standings from "./pages/Standings";
+import TopScorers from "./pages/TopScorers";
+import AssistsLeaders from "./pages/AssistsLeaders";
+import Clubs from "./pages/Clubs";
+import ClubDetail from "./pages/ClubDetail";
+import MatchDetail from "./pages/MatchDetail";
+import CompetitionPage from "./pages/CompetitionPage";
+import CompetitionsList from "./pages/CompetitionsList";
+
+import BottomNav from "./components/layout/BottomNav";
+import CompetitionNav from "./components/layout/CompetitionNav";
 import { ClubSheetHost } from "./components/ClubSheet";
 import { StaffSheetHost } from "./components/StaffSheet";
-import BottomNav from "./components/layout/BottomNav.jsx"; // Navigation bas uniquement
 
-export default function App() {
+
+import CompetitionStandings from "./pages/CompetitionStandings";
+import CompetitionScorers from "./pages/CompetitionScorers";
+
+
+function Layout() {
+  const location = useLocation();
+
+  // 👉 on est dans une compétition ?
+  const isCompetitionPage = location.pathname.startsWith("/competitions/");
+
   return (
-    <BrowserRouter>
+    <>
       <main className="px-4 sm:px-6 md:px-8 py-4 max-w-6xl mx-auto pb-28">
         <Routes>
-          {/* Redirection par défaut vers la page des matchs */}
           <Route path="/" element={<Navigate to="/journees" replace />} />
 
-          {/* Pages principales */}
+          {/* Global */}
           <Route path="/journees" element={<Home />} />
           <Route path="/classement" element={<Standings />} />
           <Route path="/buteurs" element={<TopScorers />} />
@@ -29,20 +41,37 @@ export default function App() {
           <Route path="/clubs/:id" element={<ClubDetail />} />
           <Route path="/match/:id" element={<MatchDetail />} />
 
-          {/* Admin */}
-          <Route path="/admin/match/:id/events" element={<MatchEventsEditor />} />
+          {/* Compétitions */}
+          <Route path="/competitions" element={<CompetitionsList />} />
+          <Route path="/competitions/:id" element={<CompetitionPage />} />
+          {/* Compétitions */}
+<Route path="/competitions" element={<CompetitionsList />} />
+<Route path="/competitions/:id" element={<CompetitionPage />} />
+<Route path="/competitions/:id/classement" element={<CompetitionStandings />} />
+<Route path="/competitions/:id/buteurs" element={<CompetitionScorers />} />
+
+
 
           {/* 404 */}
           <Route path="*" element={<Navigate to="/journees" replace />} />
         </Routes>
       </main>
 
-      {/* Hôtes globaux */}
+      {/* Hosts */}
       <ClubSheetHost />
       <StaffSheetHost />
 
-      {/* Barre de navigation du bas */}
-      <BottomNav />
+      {/* NAVIGATION */}
+      {!isCompetitionPage && <BottomNav />}
+      {isCompetitionPage && <CompetitionNav />}
+    </>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Layout />
     </BrowserRouter>
   );
 }

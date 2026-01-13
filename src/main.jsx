@@ -28,7 +28,7 @@ if ("serviceWorker" in navigator) {
   // register after load to avoid blocking initial paint
   window.addEventListener("load", async () => {
     try {
-      const reg = await navigator.serviceWorker.register("/service-worker.js");
+      //const reg = await navigator.serviceWorker.register("/service-worker.js");
       console.log("Service worker registered:", reg);
 
       // If there's already a waiting worker, notify app that update is ready
