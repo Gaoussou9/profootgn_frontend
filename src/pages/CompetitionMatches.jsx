@@ -1,46 +1,53 @@
-// src/components/CompetitionMatches.jsx
+// src/pages/CompetitionMatches.jsx
 import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
 import axios from "axios";
 
 const API = import.meta.env.VITE_API_BASE_URL;
 
-export default function CompetitionMatches({ competitionId }) {
+export default function CompetitionMatches() {
+  const { id: competitionId } = useParams();
+
   const [matches, setMatches] = useState(null);
   const [activeDay, setActiveDay] = useState(null); // null = TOUT
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     if (!competitionId) return;
 
     axios
       .get(`${API}/api/competitions/${competitionId}/matches/`)
-     .then(res => {
-  console.log("MATCHES:", res.data.matches);
-  setMatches(res.data.matches); // ✅ CORRECT
-})
+      .then((res) => {
+        console.log("MATCHES API:", res.data);
 
-      .catch(err => {
+        // ✅ EXTRACTION CORRECTE DU TABLEAU
+        setMatches(res.data.matches || []);
+      })
+      .catch((err) => {
         console.error("API ERROR", err);
+        setError("Erreur lors du chargement des matchs");
         setMatches([]);
       });
   }, [competitionId]);
 
   if (matches === null) return <p>Chargement…</p>;
-  if (matches.length === 0) return <p>Aucun match pour cette compétition</p>;
+  if (error) return <p className="text-red-500">{error}</p>;
+  if (matches.length === 0)
+    return <p>Aucun match pour cette compétition</p>;
 
   // Journées uniques + triées
-  const matchdays = [...new Set(matches.map(m => m.matchday))].sort(
+  const matchdays = [...new Set(matches.map((m) => m.matchday))].sort(
     (a, b) => a - b
   );
 
-  // Filtrage fiable
+  // Filtrage par journée
   const filteredMatches =
     activeDay === null
       ? matches
-      : matches.filter(m => m.matchday === activeDay);
+      : matches.filter((m) => m.matchday === activeDay);
 
   return (
     <div className="space-y-4">
-
       {/* Filtres journées */}
       <div className="flex gap-2 overflow-x-auto pb-2">
         <button
@@ -52,7 +59,7 @@ export default function CompetitionMatches({ competitionId }) {
           Tout
         </button>
 
-        {matchdays.map(day => (
+        {matchdays.map((day) => (
           <button
             key={day}
             onClick={() => setActiveDay(day)}
@@ -65,9 +72,9 @@ export default function CompetitionMatches({ competitionId }) {
         ))}
       </div>
 
-      {/* Liste matchs */}
+      {/* Liste des matchs */}
       <div className="space-y-3">
-        {filteredMatches.map(m => (
+        {filteredMatches.map((m) => (
           <div
             key={m.id}
             className="bg-white rounded-xl p-4 shadow"
@@ -89,7 +96,11 @@ export default function CompetitionMatches({ competitionId }) {
             <div className="flex justify-between text-xs text-gray-500 mt-2">
               <span>J{m.matchday}</span>
               <span>{m.status_label}</span>
-              <span>{new Date(m.datetime).toLocaleString()}</span>
+              <span>
+                {m.datetime
+                  ? new Date(m.datetime).toLocaleString()
+                  : ""}
+              </span>
             </div>
           </div>
         ))}
