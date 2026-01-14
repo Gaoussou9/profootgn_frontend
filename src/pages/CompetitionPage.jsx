@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import MatchCard from "../components/MatchCard";
 
+const API_BASE =
+  import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
+
 export default function CompetitionPage() {
   const { id } = useParams();
 
@@ -16,7 +19,7 @@ export default function CompetitionPage() {
     setLoading(true);
     setError(null);
 
-    fetch(`http://127.0.0.1:8000/api/competitions/${id}/matches/`)
+    fetch(`${API_BASE}/api/competitions/${id}/matches/`)
       .then(res => {
         if (!res.ok) {
           throw new Error("Erreur lors du chargement des matchs");
@@ -24,12 +27,10 @@ export default function CompetitionPage() {
         return res.json();
       })
       .then(data => {
-        console.log("DATA API:", data);
+        console.log("API PROD DATA:", data);
 
-        // ✅ ADAPTATION À LA NOUVELLE RÉPONSE API
         setCompetition(data.competition || null);
         setMatches(data.matches || []);
-
         setLoading(false);
       })
       .catch(err => {
@@ -39,21 +40,15 @@ export default function CompetitionPage() {
       });
   }, [id]);
 
-  if (loading) {
-    return <p>Chargement des matchs…</p>;
-  }
-
-  if (error) {
-    return <p className="text-red-500">Erreur : {error}</p>;
-  }
+  if (loading) return <p>Chargement des matchs…</p>;
+  if (error) return <p className="text-red-500">Erreur : {error}</p>;
 
   return (
     <div className="space-y-4">
-
-      {/* ✅ NOM DE LA COMPÉTITION */}
       {competition && (
         <h1 className="text-xl font-bold mb-4">
-          {competition.name} {competition.season && `– ${competition.season}`}
+          {competition.name}
+          {competition.season && ` – ${competition.season}`}
         </h1>
       )}
 
