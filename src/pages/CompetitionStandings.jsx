@@ -15,18 +15,25 @@ export default function CompetitionStandings() {
   useEffect(() => {
     if (!id) return;
 
+    setLoading(true);
+    setError(null);
+
     fetch(`${API}/api/competitions/${id}/standings/`)
       .then(res => {
-        if (!res.ok) throw new Error("Impossible de charger le classement");
+        if (!res.ok) {
+          throw new Error("Impossible de charger le classement");
+        }
         return res.json();
       })
       .then(data => {
-        console.log("STANDINGS API:", data); // 🔍 DEBUG
-        setCompetition(data.competition);
-        setTable(data.standings);
+        console.log("STANDINGS API:", data);
+
+        setCompetition(data.competition ?? null);
+        setTable(data.standings ?? []);
         setLoading(false);
       })
       .catch(err => {
+        console.error(err);
         setError(err.message);
         setLoading(false);
       });
@@ -39,7 +46,7 @@ export default function CompetitionStandings() {
   return (
     <div className="bg-white rounded-2xl shadow p-4 overflow-x-auto">
 
-      {/* TITRE */}
+      {/* ===== TITRE ===== */}
       {competition && (
         <div className="mb-4">
           <h2 className="text-lg font-bold">
@@ -51,19 +58,21 @@ export default function CompetitionStandings() {
         </div>
       )}
 
-      <table className="w-full text-sm border-collapse">
+      {/* ===== TABLE ===== */}
+      <table className="w-full text-xs sm:text-sm border-collapse">
         <thead>
           <tr className="text-gray-500 border-b">
-            <th>#</th>
-            <th className="text-left">Équipe</th>
-            <th>J</th>
-            <th>V</th>
-            <th>N</th>
-            <th>D</th>
-            <th>BM</th>
-            <th>BC</th>
-            <th>Diff</th>
-            <th className="font-bold">Pts</th>
+            <th className="px-2">#</th>
+            <th className="text-left px-2">Équipe</th>
+
+            <th className="border-l px-2 text-center">J</th>
+            <th className="border-l px-2 text-center">V</th>
+            <th className="border-l px-2 text-center">N</th>
+            <th className="border-l px-2 text-center">D</th>
+            <th className="border-l px-2 text-center">BM</th>
+            <th className="border-l px-2 text-center">BC</th>
+            <th className="border-l px-2 text-center">Diff</th>
+            <th className="border-l px-2 text-center font-bold">Pts</th>
           </tr>
         </thead>
 
@@ -77,10 +86,17 @@ export default function CompetitionStandings() {
                 : "text-gray-500";
 
             return (
-              <tr key={row.team.id} className="border-b last:border-0">
-                <td className="text-center font-semibold">{index + 1}</td>
+              <tr
+                key={row.team.id}
+                className="border-b last:border-0"
+              >
+                {/* POSITION */}
+                <td className="text-center font-semibold px-2">
+                  {index + 1}
+                </td>
 
-                <td className="py-3">
+                {/* ÉQUIPE + FORME */}
+                <td className="py-3 px-2">
                   <div className="flex items-center gap-2">
                     {row.team.logo && (
                       <img
@@ -91,11 +107,11 @@ export default function CompetitionStandings() {
                     )}
 
                     <div>
-                      <div className="font-medium">
+                      <div className="font-medium truncate">
                         {row.team.name}
                       </div>
 
-                      {/* 🔥 FORME V/N/D */}
+                      {/* 🔥 FORME V / N / D */}
                       {row.form && row.form.length > 0 && (
                         <div className="flex gap-1 mt-1">
                           {row.form.map((f, i) => (
@@ -107,20 +123,27 @@ export default function CompetitionStandings() {
                   </div>
                 </td>
 
-                <td className="text-center">{row.played}</td>
-                <td className="text-center">{row.wins}</td>
-                <td className="text-center">{row.draws}</td>
-                <td className="text-center">{row.losses}</td>
-                <td className="text-center">{row.goals_for}</td>
-                <td className="text-center">{row.goals_against}</td>
+                {/* STATS */}
+                <td className="border-l text-center">{row.played}</td>
+                <td className="border-l text-center">{row.wins}</td>
+                <td className="border-l text-center">{row.draws}</td>
+                <td className="border-l text-center">{row.losses}</td>
+                <td className="border-l text-center">{row.goals_for}</td>
+                <td className="border-l text-center">{row.goals_against}</td>
 
-                <td className={`text-center font-semibold ${diffColor}`}>
+                <td className={`border-l text-center font-semibold ${diffColor}`}>
                   {row.goal_difference > 0 && "+"}
                   {row.goal_difference}
                 </td>
 
-                <td className="text-center font-bold text-blue-600">
+                {/* ✅ POINTS + PÉNALITÉS */}
+                <td className="border-l text-center font-bold text-blue-600">
                   {row.points}
+                  {row.penalty_points > 0 && (
+                    <span className="ml-1 text-xs text-red-500">
+                      (-{row.penalty_points})
+                    </span>
+                  )}
                 </td>
               </tr>
             );
