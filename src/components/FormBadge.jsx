@@ -1,8 +1,8 @@
 export default function FormBadge({ value }) {
   const colors = {
-    V: "bg-green-300",
-    N: "bg-yellow-300 text-black",
-    D: "bg-red-300",
+    V: "bg-green-400",
+    N: "bg-yellow-400 text-black",
+    D: "bg-red-400",
   };
 
   return (
