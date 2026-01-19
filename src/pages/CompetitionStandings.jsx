@@ -20,136 +20,127 @@ export default function CompetitionStandings() {
 
     fetch(`${API}/api/competitions/${id}/standings/`)
       .then(res => {
-        if (!res.ok) {
-          throw new Error("Impossible de charger le classement");
-        }
+        if (!res.ok) throw new Error("Impossible de charger le classement");
         return res.json();
       })
       .then(data => {
-        console.log("STANDINGS API:", data);
-
         setCompetition(data.competition ?? null);
         setTable(data.standings ?? []);
         setLoading(false);
       })
       .catch(err => {
-        console.error(err);
         setError(err.message);
         setLoading(false);
       });
   }, [id]);
 
-  if (loading) return <p>Chargement du classement…</p>;
+  if (loading) return <p>Chargement…</p>;
   if (error) return <p className="text-red-500">{error}</p>;
   if (!table.length) return <p>Aucun classement disponible</p>;
 
   return (
-    <div className="bg-white rounded-2xl shadow p-4 overflow-x-auto">
-
+    <div className="bg-white rounded-2xl shadow p-3">
       {/* ===== TITRE ===== */}
       {competition && (
-        <div className="mb-4">
-          <h2 className="text-lg font-bold">
-            {competition.name}
-          </h2>
-          <p className="text-sm text-gray-500">
+        <div className="mb-3">
+          <h2 className="text-base font-bold">{competition.name}</h2>
+          <p className="text-xs text-gray-500">
             Saison {competition.season}
           </p>
         </div>
       )}
 
       {/* ===== TABLE ===== */}
-      <table className="w-full text-xs sm:text-sm border-collapse">
-        <thead>
-          <tr className="text-gray-500 border-b">
-            <th className="px-2">#</th>
-            <th className="text-left px-2">Équipe</th>
+      <div className="overflow-x-auto">
+        <table className="w-full text-[11px] border-collapse">
+          <thead>
+            <tr className="border-b text-gray-500">
+              <th className="px-1">#</th>
+              <th className="text-left px-2">Équipe</th>
 
-            <th className="border-l px-2 text-center">J</th>
-            <th className="border-l px-2 text-center">V</th>
-            <th className="border-l px-2 text-center">N</th>
-            <th className="border-l px-2 text-center">D</th>
-            <th className="border-l px-2 text-center">BM</th>
-            <th className="border-l px-2 text-center">BC</th>
-            <th className="border-l px-2 text-center">Diff</th>
-            <th className="border-l px-2 text-center font-bold">Pts</th>
-          </tr>
-        </thead>
+              <th className="border-l px-1">J</th>
+              <th className="border-l px-1">V</th>
+              <th className="border-l px-1">N</th>
+              <th className="border-l px-1">D</th>
+              <th className="border-l px-1">B</th>
+              <th className="border-l px-1">C</th>
+              <th className="border-l px-1">Diff</th>
+              <th className="border-l px-1 font-bold">Pts</th>
+            </tr>
+          </thead>
 
-        <tbody>
-          {table.map((row, index) => {
-            const diffColor =
-              row.goal_difference > 0
-                ? "text-green-600"
-                : row.goal_difference < 0
-                ? "text-red-500"
-                : "text-gray-500";
+          <tbody>
+            {table.map((row, index) => {
+              const diffColor =
+                row.goal_difference > 0
+                  ? "text-green-600"
+                  : row.goal_difference < 0
+                  ? "text-red-500"
+                  : "text-gray-500";
 
-            return (
-              <tr
-                key={row.team.id}
-                className="border-b last:border-0"
-              >
-                {/* POSITION */}
-                <td className="text-center font-semibold px-2">
-                  {index + 1}
-                </td>
+              return (
+                <tr key={row.team.id} className="border-b last:border-0">
+                  {/* POSITION */}
+                  <td className="text-center font-semibold px-1">
+                    {index + 1}
+                  </td>
 
-                {/* ÉQUIPE + FORME */}
-                <td className="py-3 px-2">
-                  <div className="flex items-center gap-2">
-                    {row.team.logo && (
-                      <img
-                        src={row.team.logo}
-                        alt={row.team.name}
-                        className="w-6 h-6 object-contain"
-                      />
-                    )}
-
-                    <div>
-                      <div className="font-medium truncate">
-                        {row.team.name}
-                      </div>
-
-                      {/* 🔥 FORME V / N / D */}
-                      {row.form && row.form.length > 0 && (
-                        <div className="flex gap-1 mt-1">
-                          {row.form.map((f, i) => (
-                            <FormBadge key={i} value={f} />
-                          ))}
-                        </div>
+                  {/* ÉQUIPE + FORME */}
+                  <td className="px-2 py-2">
+                    <div className="flex items-center gap-2">
+                      {row.team.logo && (
+                        <img
+                          src={row.team.logo}
+                          alt={row.team.name}
+                          className="w-5 h-5 object-contain"
+                        />
                       )}
+
+                      <div className="min-w-0">
+                        <div className="font-medium truncate max-w-[110px]">
+                          {row.team.name}
+                        </div>
+
+                        {/* FORMES MINI */}
+                        {row.form?.length > 0 && (
+                          <div className="flex gap-[0.5px] mt-0.5">
+                            {row.form.map((f, i) => (
+                              <FormBadge key={i} value={f} />
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </td>
+                  </td>
 
-                {/* STATS */}
-                <td className="border-l text-center">{row.played}</td>
-                <td className="border-l text-center">{row.wins}</td>
-                <td className="border-l text-center">{row.draws}</td>
-                <td className="border-l text-center">{row.losses}</td>
-                <td className="border-l text-center">{row.goals_for}</td>
-                <td className="border-l text-center">{row.goals_against}</td>
+                  {/* STATS */}
+                  <td className="border-l text-center">{row.played}</td>
+                  <td className="border-l text-center">{row.wins}</td>
+                  <td className="border-l text-center">{row.draws}</td>
+                  <td className="border-l text-center">{row.losses}</td>
+                  <td className="border-l text-center">{row.goals_for}</td>
+                  <td className="border-l text-center">{row.goals_against}</td>
 
-                <td className={`border-l text-center font-semibold ${diffColor}`}>
-                  {row.goal_difference > 0 && "+"}
-                  {row.goal_difference}
-                </td>
+                  <td className={`border-l text-center font-semibold ${diffColor}`}>
+                    {row.goal_difference > 0 && "+"}
+                    {row.goal_difference}
+                  </td>
 
-                {/* ✅ POINTS + PÉNALITÉS */}
-                <td className="border-l text-center font-bold text-blue-600">
-                  {row.points}
-                  {row.penalty_points > 0 && (
-                    <span className="ml-1 text-xs text-red-500">
-                      (-{row.penalty_points})
-                    </span>
-                  )}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+                  {/* POINTS + PÉNALITÉ */}
+                  <td className="border-l text-center font-bold text-blue-600">
+                    {row.points}
+                    {row.penalty_points > 0 && (
+                      <span className="block text-[9px] text-red-500 leading-none">
+                        −{row.penalty_points}
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

@@ -1,13 +1,21 @@
 export default function FormBadge({ value }) {
-  const styles = {
-    V: "bg-green-500 text-white",
+  const colors = {
+    V: "bg-green-500",
     N: "bg-yellow-400 text-black",
-    D: "bg-red-500 text-white",
+    D: "bg-red-500",
   };
 
   return (
     <span
-      className={`w-5 h-5 flex items-center justify-center rounded text-xs font-bold ${styles[value]}`}
+      className={`
+        ${colors[value] || "bg-gray-400"}
+        text-white
+        text-[6px]        /* 🔥 très petit */
+        font-bold
+        w-3 h-3           /* 🔥 taille compacte */
+        flex items-center justify-center
+        rounded
+      `}
     >
       {value}
     </span>
