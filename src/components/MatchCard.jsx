@@ -101,6 +101,7 @@ export default function MatchCard({ match }) {
 
       {/* Ligne principale */}
       <div className="flex items-center justify-between">
+        
 
         {/* Équipe domicile */}
         <div className="w-1/3 font-semibold truncate">
