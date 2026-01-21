@@ -7,6 +7,7 @@ export default function ClubPage() {
   const { competitionId, clubId } = useParams();
 
   const [data, setData] = useState(null);
+  const [activeTab, setActiveTab] = useState("matches");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -39,13 +40,11 @@ export default function ClubPage() {
   const { club, competition, stats } = data;
 
   return (
-    <div className="pb-24">
+    <div className="pb-28">
 
-      {/* ================= HEADER CLUB PRO ================= */}
+      {/* ================= HEADER CLUB ================= */}
       <div className="bg-white rounded-b-2xl shadow px-4 pt-5 pb-6">
         <div className="flex items-center gap-4">
-
-          {/* LOGO */}
           {club.logo ? (
             <img
               src={club.logo}
@@ -56,16 +55,11 @@ export default function ClubPage() {
             <div className="w-16 h-16 rounded-full bg-gray-200" />
           )}
 
-          {/* INFOS */}
           <div className="flex-1 min-w-0">
-            <h1 className="text-lg font-bold truncate">
-              {club.name}
-            </h1>
-
-            <p className="text-xs text-gray-500 mt-0.5">
+            <h1 className="text-lg font-bold truncate">{club.name}</h1>
+            <p className="text-xs text-gray-500">
               {club.city || "—"}
             </p>
-
             <p className="text-xs text-blue-600 font-medium mt-1">
               {competition.name} • {competition.season}
             </p>
@@ -81,16 +75,141 @@ export default function ClubPage() {
         </div>
       </div>
 
-      {/* CONTENU À VENIR */}
-      <div className="p-4 text-sm text-gray-500">
-        Page club prête.<br />
-        Prochaine étape : matchs, effectif, staff.
+      {/* ================= ONGLET NAV ================= */}
+      <div className="sticky top-0 z-10 bg-white border-b">
+        <div className="flex">
+          <TabButton
+            label="Matchs"
+            active={activeTab === "matches"}
+            onClick={() => setActiveTab("matches")}
+          />
+          <TabButton
+            label="Effectif"
+            active={activeTab === "squad"}
+            onClick={() => setActiveTab("squad")}
+          />
+          <TabButton
+            label="Staff"
+            active={activeTab === "staff"}
+            onClick={() => setActiveTab("staff")}
+          />
+        </div>
+      </div>
+
+      {/* ================= CONTENU ONGLET ================= */}
+      <div className="p-4">
+
+        {activeTab === "matches" && (
+  <Section title="Matchs du club">
+
+    {!data.matches || data.matches.length === 0 ? (
+      <Empty text="Aucun match disponible pour ce club." />
+    ) : (
+      <div className="space-y-2">
+        {data.matches.map(match => {
+          const isHome = match.home_team === club.name;
+          const opponent = isHome ? match.away_team : match.home_team;
+          const score = match.status === "SCHEDULED"
+            ? "vs"
+            : isHome
+              ? `${match.home_score} - ${match.away_score}`
+              : `${match.away_score} - ${match.home_score}`;
+
+          return (
+            <button
+              key={match.id}
+              onClick={() => window.location.href = `/match/${match.id}`}
+              className="
+                w-full bg-white rounded-xl shadow
+                p-3 flex items-center justify-between
+                active:scale-95 transition
+              "
+            >
+              {/* Adversaire */}
+              <div className="text-sm font-medium truncate max-w-[45%]">
+                {opponent}
+              </div>
+
+              {/* Score */}
+              <div
+                className={`text-sm font-bold ${
+                  match.status === "LIVE"
+                    ? "text-green-600 animate-pulse"
+                    : "text-gray-800"
+                }`}
+              >
+                {score}
+              </div>
+
+              {/* Statut */}
+              <div className="text-xs text-gray-500">
+                {match.status === "LIVE"
+                  ? "LIVE"
+                  : match.status === "FT"
+                  ? "FT"
+                  : new Date(match.datetime).toLocaleDateString()}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    )}
+  </Section>
+)}
+
+
+        {activeTab === "squad" && (
+          <Section title="Effectif">
+            <Empty text="La liste des joueurs sera affichée ici." />
+          </Section>
+        )}
+
+        {activeTab === "staff" && (
+          <Section title="Staff technique">
+            <Empty text="Le staff du club sera affiché ici." />
+          </Section>
+        )}
+
       </div>
     </div>
   );
 }
 
-/* ===== MINI COMPONENT ===== */
+/* ================= COMPONENTS ================= */
+
+function TabButton({ label, active, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`
+        flex-1 py-3 text-sm font-medium
+        ${active
+          ? "text-blue-600 border-b-2 border-blue-600"
+          : "text-gray-500"}
+      `}
+    >
+      {label}
+    </button>
+  );
+}
+
+function Section({ title, children }) {
+  return (
+    <div>
+      <h2 className="text-sm font-semibold mb-2">{title}</h2>
+      {children}
+    </div>
+  );
+}
+
+function Empty({ text }) {
+  return (
+    <p className="text-xs text-gray-500 bg-gray-50 rounded-lg p-3">
+      {text}
+    </p>
+  );
+}
+
 function Stat({ label, value }) {
   return (
     <div>
