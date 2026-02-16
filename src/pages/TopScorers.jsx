@@ -82,7 +82,7 @@ export default function TopScorers() {
 
   useEffect(() => {
     fetchData();
-    const id = setInterval(fetchData, 15000);
+    const id = setInterval(fetchData, 75000);
     return () => clearInterval(id);
   }, []);
 

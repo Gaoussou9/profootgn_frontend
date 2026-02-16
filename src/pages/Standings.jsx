@@ -74,10 +74,29 @@ export default function Standings() {
   };
 
   useEffect(() => {
-    fetchData();
-    const id = setInterval(fetchData, 15000);
-    return () => clearInterval(id);
-  }, []);
+  let interval = null;
+
+  const init = async () => {
+    await fetchData();
+
+    try {
+      const r = await api.get("matches/live/");
+      const liveMatches = Array.isArray(r.data)
+        ? r.data
+        : r.data?.results || [];
+
+      if (liveMatches.length > 0) {
+        interval = setInterval(fetchData, 60000); // 🔥 1 minute seulement si LIVE
+      }
+    } catch {}
+  };
+
+  init();
+
+  return () => {
+    if (interval) clearInterval(interval);
+  };
+}, []);
 
   if (loading) return <p>Chargement…</p>;
   if (error) return <p className="text-red-600">Erreur : {error}</p>;

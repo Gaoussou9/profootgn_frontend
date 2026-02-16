@@ -897,12 +897,13 @@ export default function MatchDetail() {
     setLoadingCompo(false);
   };
 
-  useEffect(() => {
-    if (tab !== "compos") return;
-    loadLineupsFresh();
-    const t = setInterval(loadLineupsFresh, 10000);
-    return () => clearInterval(t);
-  }, [tab, id]);
+ useEffect(() => {
+  if (tab !== "compos") return;
+
+  loadLineupsFresh(); // charge une seule fois
+
+}, [tab, id]);
+
 
   const onClickTab = async (next) => {
     setTab(next);

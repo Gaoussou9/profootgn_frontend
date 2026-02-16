@@ -408,15 +408,18 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    const id = setInterval(async () => {
-      try {
-        const r = await api.get("matches/live/");
-        const arr = Array.isArray(r.data) ? r.data : r.data.results || [];
-        setLive(arr);
-      } catch {}
-    }, 15000);
-    return () => clearInterval(id);
-  }, []);
+  if (!live.length) return; // 🔥 Ne poll que s'il y a un match LIVE
+
+  const id = setInterval(async () => {
+    try {
+      const r = await api.get("matches/live/");
+      const arr = Array.isArray(r.data) ? r.data : r.data.results || [];
+      setLive(arr);
+    } catch {}
+  }, 20000); // 🔥 20 secondes au lieu de 15
+
+  return () => clearInterval(id);
+}, [live.length]);
 
   useEffect(() => {
     const id = setInterval(async () => {
@@ -435,7 +438,7 @@ export default function Home() {
         setPostponed(getArr(rPost));
         setCanceled(getArr(rCanc));
       } catch {}
-    }, 30000);
+    }, 300000);
     return () => clearInterval(id);
   }, []);
 

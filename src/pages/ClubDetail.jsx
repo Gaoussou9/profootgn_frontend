@@ -190,70 +190,33 @@ export default function ClubDetail() {
   }, [id]);
 
   /* ---------- Charge les totaux club (buts, cartons, etc.) ---------- */
-  useEffect(() => {
-    let stop = false;
-    let timer;
+ useEffect(() => {
+  let interval = null;
+  let stop = false;
 
-    const fetchTotals = async () => {
-      try {
-        const r = await api.get(`clubs/${id}/players-stats/?include_live=1`);
-        const arr = Array.isArray(r.data?.players) ? r.data.players : [];
+  const init = async () => {
+    await fetchTotals();
 
-        const map = {};
-        arr.forEach((p) => {
-          if (p?.id != null) {
-            map[p.id] = {
-              goals: Number(
-                p.goals ??
-                  p.buts ??
-                  p.goals_total ??
-                  0
-              ),
-              assists: Number(
-                p.assists ??
-                  p.assist ??
-                  p.passes_decisives ??
-                  p.passes_decisive ??
-                  p.a ??
-                  p.assists_total ??
-                  0
-              ),
-              yellows: Number(
-                p.yc ??
-                  p.yellow_cards ??
-                  p.jaunes ??
-                  0
-              ),
-              reds: Number(
-                p.rc ??
-                  p.red_cards ??
-                  p.rouges ??
-                  0
-              ),
-            };
-          }
-        });
+    try {
+      const r = await api.get("matches/live/");
+      const liveMatches = Array.isArray(r.data)
+        ? r.data
+        : r.data?.results || [];
 
-        if (!stop) setTotals(map);
-      } catch {
-        if (!stop) setTotals({});
+      if (liveMatches.length > 0) {
+        interval = setInterval(fetchTotals, 60000); // 🔥 1 minute seulement si LIVE
       }
-    };
+    } catch {}
+  };
 
-    fetchTotals();
-    timer = setInterval(fetchTotals, 12000);
+  init();
 
-    const onVis = () => {
-      if (document.visibilityState === "visible") fetchTotals();
-    };
-    document.addEventListener("visibilitychange", onVis);
+  return () => {
+    stop = true;
+    if (interval) clearInterval(interval);
+  };
+}, [id]);
 
-    return () => {
-      stop = true;
-      clearInterval(timer);
-      document.removeEventListener("visibilitychange", onVis);
-    };
-  }, [id]);
 
   /* ---------- Recalcule les passes décisives depuis /goals/ ---------- */
   useEffect(() => {

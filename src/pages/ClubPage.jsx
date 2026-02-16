@@ -1,16 +1,24 @@
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 
 const API = import.meta.env.VITE_API_BASE_URL;
 
 export default function ClubPage() {
   const { competitionId, clubId } = useParams();
+  const navigate = useNavigate();
 
   const [data, setData] = useState(null);
+  const [matches, setMatches] = useState([]);
+  const [players, setPlayers] = useState([]);
+
   const [activeTab, setActiveTab] = useState("matches");
+
   const [loading, setLoading] = useState(true);
+  const [loadingMatches, setLoadingMatches] = useState(true);
+  const [loadingPlayers, setLoadingPlayers] = useState(false);
   const [error, setError] = useState(null);
 
+  /* ================= FETCH CLUB + STATS ================= */
   useEffect(() => {
     if (!competitionId || !clubId) return;
 
@@ -32,6 +40,49 @@ export default function ClubPage() {
         setLoading(false);
       });
   }, [competitionId, clubId]);
+
+  /* ================= FETCH MATCHES DU CLUB ================= */
+  useEffect(() => {
+    if (!competitionId || !clubId) return;
+
+    setLoadingMatches(true);
+
+    fetch(`${API}/api/competitions/${competitionId}/clubs/${clubId}/matches/`)
+      .then(res => {
+        if (!res.ok) throw new Error("Impossible de charger les matchs");
+        return res.json();
+      })
+      .then(json => {
+        setMatches(json.matches || []);
+        setLoadingMatches(false);
+      })
+      .catch(err => {
+        console.error(err);
+        setLoadingMatches(false);
+      });
+  }, [competitionId, clubId]);
+
+  /* ================= FETCH JOUEURS (EFFECTIF) ================= */
+  useEffect(() => {
+    if (!competitionId || !clubId) return;
+    if (activeTab !== "squad") return;
+
+    setLoadingPlayers(true);
+
+    fetch(`${API}/api/competitions/${competitionId}/clubs/${clubId}/players/`)
+      .then(res => {
+        if (!res.ok) throw new Error("Impossible de charger l’effectif");
+        return res.json();
+      })
+      .then(json => {
+        setPlayers(json.players || []);
+        setLoadingPlayers(false);
+      })
+      .catch(err => {
+        console.error(err);
+        setLoadingPlayers(false);
+      });
+  }, [competitionId, clubId, activeTab]);
 
   if (loading) return <p className="p-4">Chargement du club…</p>;
   if (error) return <p className="p-4 text-red-500">{error}</p>;
@@ -57,9 +108,7 @@ export default function ClubPage() {
 
           <div className="flex-1 min-w-0">
             <h1 className="text-lg font-bold truncate">{club.name}</h1>
-            <p className="text-xs text-gray-500">
-              {club.city || "—"}
-            </p>
+            <p className="text-xs text-gray-500">{club.city || "—"}</p>
             <p className="text-xs text-blue-600 font-medium mt-1">
               {competition.name} • {competition.season}
             </p>
@@ -96,74 +145,123 @@ export default function ClubPage() {
         </div>
       </div>
 
-      {/* ================= CONTENU ONGLET ================= */}
+      {/* ================= CONTENU ================= */}
       <div className="p-4">
 
+        {/* ===== MATCHS ===== */}
         {activeTab === "matches" && (
-  <Section title="Matchs du club">
+          <Section title="Matchs du club">
+            {loadingMatches ? (
+              <p className="text-xs text-gray-500">
+                Chargement des matchs…
+              </p>
+            ) : matches.length === 0 ? (
+              <Empty text="Aucun match disponible pour ce club." />
+            ) : (
+              <div className="space-y-3">
+                {matches.map(match => {
+                  const home = match.home_team;
+                  const away = match.away_team;
+                  const isPlayed = match.status !== "SCHEDULED";
+                  const centerText = isPlayed
+                    ? `${match.home_score} - ${match.away_score}`
+                    : "vs";
 
-    {!data.matches || data.matches.length === 0 ? (
-      <Empty text="Aucun match disponible pour ce club." />
-    ) : (
-      <div className="space-y-2">
-        {data.matches.map(match => {
-          const isHome = match.home_team === club.name;
-          const opponent = isHome ? match.away_team : match.home_team;
-          const score = match.status === "SCHEDULED"
-            ? "vs"
-            : isHome
-              ? `${match.home_score} - ${match.away_score}`
-              : `${match.away_score} - ${match.home_score}`;
+                  return (
+                    <button
+                      key={match.id}
+                      onClick={() => navigate(`/match/${match.id}`)}
+                      className="
+                        w-full bg-white rounded-xl shadow
+                        px-4 py-3 flex items-center justify-between
+                        active:scale-95 transition
+                      "
+                    >
+                      <div className="flex items-center gap-2 w-[40%]">
+                        {home.logo && (
+                          <img
+                            src={home.logo}
+                            alt={home.name}
+                            className="w-7 h-7 object-contain"
+                          />
+                        )}
+                        <span className="text-sm font-medium truncate">
+                          {home.name}
+                        </span>
+                      </div>
 
-          return (
-            <button
-              key={match.id}
-              onClick={() => window.location.href = `/match/${match.id}`}
-              className="
-                w-full bg-white rounded-xl shadow
-                p-3 flex items-center justify-between
-                active:scale-95 transition
-              "
-            >
-              {/* Adversaire */}
-              <div className="text-sm font-medium truncate max-w-[45%]">
-                {opponent}
+                      <div className="text-sm font-bold w-[20%] text-center">
+                        {centerText}
+                      </div>
+
+                      <div className="flex items-center gap-2 justify-end w-[40%]">
+                        <span className="text-sm font-medium truncate text-right">
+                          {away.name}
+                        </span>
+                        {away.logo && (
+                          <img
+                            src={away.logo}
+                            alt={away.name}
+                            className="w-7 h-7 object-contain"
+                          />
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
-
-              {/* Score */}
-              <div
-                className={`text-sm font-bold ${
-                  match.status === "LIVE"
-                    ? "text-green-600 animate-pulse"
-                    : "text-gray-800"
-                }`}
-              >
-                {score}
-              </div>
-
-              {/* Statut */}
-              <div className="text-xs text-gray-500">
-                {match.status === "LIVE"
-                  ? "LIVE"
-                  : match.status === "FT"
-                  ? "FT"
-                  : new Date(match.datetime).toLocaleDateString()}
-              </div>
-            </button>
-          );
-        })}
-      </div>
-    )}
-  </Section>
-)}
-
-
-        {activeTab === "squad" && (
-          <Section title="Effectif">
-            <Empty text="La liste des joueurs sera affichée ici." />
+            )}
           </Section>
         )}
 
+        {/* ===== EFFECTIF ===== */}
+        {activeTab === "squad" && (
+          <Section title="Effectif">
+            {loadingPlayers ? (
+              <p className="text-xs text-gray-500">
+                Chargement de l’effectif…
+              </p>
+            ) : players.length === 0 ? (
+              <Empty text="Aucun joueur enregistré pour ce club." />
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {players.map(player => (
+                  <div
+                    key={player.id}
+                    className="
+                      bg-white rounded-xl shadow
+                      p-3 flex flex-col items-center
+                    "
+                  >
+                    {player.photo ? (
+                      <img
+                        src={player.photo}
+                        alt={player.name}
+                        className="w-14 h-14 rounded-full object-cover mb-2"
+                      />
+                    ) : (
+                      <div className="w-14 h-14 rounded-full bg-gray-200 mb-2" />
+                    )}
+
+                    <div className="text-sm font-medium truncate">
+                      {player.name}
+                    </div>
+                    <div className="text-[11px] text-gray-500">
+                      {player.position || "—"}
+                    </div>
+                    {player.number && (
+                      <div className="text-xs font-bold text-blue-600 mt-1">
+                        #{player.number}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </Section>
+        )}
+
+        {/* ===== STAFF ===== */}
         {activeTab === "staff" && (
           <Section title="Staff technique">
             <Empty text="Le staff du club sera affiché ici." />
@@ -175,18 +273,17 @@ export default function ClubPage() {
   );
 }
 
-/* ================= COMPONENTS ================= */
+/* ================= UI COMPONENTS ================= */
 
 function TabButton({ label, active, onClick }) {
   return (
     <button
       onClick={onClick}
-      className={`
-        flex-1 py-3 text-sm font-medium
-        ${active
+      className={`flex-1 py-3 text-sm font-medium ${
+        active
           ? "text-blue-600 border-b-2 border-blue-600"
-          : "text-gray-500"}
-      `}
+          : "text-gray-500"
+      }`}
     >
       {label}
     </button>
