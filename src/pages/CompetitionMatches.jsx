@@ -50,13 +50,13 @@ export default function CompetitionMatches() {
       : matches.filter((m) => m.matchday === activeDay);
 
   return (
-    <div className="space-y-4 px-3">
+    <div className="space-y-4 px-3 pb-6">
 
       {/* FILTRES JOURNÉES */}
-      <div className="flex gap-2 overflow-x-auto pb-2">
+      <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
         <button
           onClick={() => setActiveDay(null)}
-          className={`px-4 py-1 rounded-full text-sm font-medium transition whitespace-nowrap ${
+          className={`px-4 py-1.5 rounded-full text-sm font-semibold transition ${
             activeDay === null
               ? "bg-black text-white"
               : "bg-gray-200 hover:bg-gray-300"
@@ -69,7 +69,7 @@ export default function CompetitionMatches() {
           <button
             key={day}
             onClick={() => setActiveDay(day)}
-            className={`px-4 py-1 rounded-full text-sm font-medium transition whitespace-nowrap ${
+            className={`px-4 py-1.5 rounded-full text-sm font-semibold transition ${
               activeDay === day
                 ? "bg-black text-white"
                 : "bg-gray-200 hover:bg-gray-300"
@@ -86,27 +86,33 @@ export default function CompetitionMatches() {
           <div
             key={m.id}
             onClick={() => navigate(`/match/${m.id}`)}
-            className="bg-white rounded-2xl px-4 py-3 shadow-sm hover:shadow-md transition cursor-pointer"
+            className="bg-white rounded-2xl px-4 py-4 
+                       shadow-sm hover:shadow-lg
+                       transition-all duration-300
+                       cursor-pointer active:scale-[0.98]"
           >
+
             {/* LIGNE PRINCIPALE */}
-            <div className="flex items-center justify-between gap-2">
+            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
 
               {/* HOME */}
-              <div className="flex items-center gap-2 flex-1 min-w-0">
+              <div className="flex items-center gap-2 min-w-0">
                 <img
                   src={m.home_team?.logo}
                   alt=""
-                  className="w-6 h-6 object-contain shrink-0"
+                  className="w-7 h-7 object-contain shrink-0"
                 />
                 <span className="text-sm font-semibold truncate">
                   {m.home_team?.name}
                 </span>
               </div>
 
-              {/* SCORE FIXE */}
-              <div className="flex items-center justify-center gap-2 w-20 shrink-0">
+              {/* SCORE */}
+              <div className="flex items-center justify-center gap-3 
+                              text-2xl font-extrabold tabular-nums 
+                              whitespace-nowrap">
                 <span
-                  className={`text-lg font-bold ${
+                  className={`${
                     m.home_score > m.away_score
                       ? "text-green-600"
                       : "text-gray-900"
@@ -115,10 +121,10 @@ export default function CompetitionMatches() {
                   {m.home_score}
                 </span>
 
-                <span className="text-gray-400">-</span>
+                <span className="text-gray-400 text-lg">-</span>
 
                 <span
-                  className={`text-lg font-bold ${
+                  className={`${
                     m.away_score > m.home_score
                       ? "text-green-600"
                       : "text-gray-900"
@@ -129,31 +135,35 @@ export default function CompetitionMatches() {
               </div>
 
               {/* AWAY */}
-              <div className="flex items-center justify-end gap-2 flex-1 min-w-0 text-right">
-                <span className="text-sm font-semibold truncate">
+              <div className="flex items-center justify-end gap-2 min-w-0">
+                <span className="text-sm font-semibold truncate text-right">
                   {m.away_team?.name}
                 </span>
                 <img
                   src={m.away_team?.logo}
                   alt=""
-                  className="w-6 h-6 object-contain shrink-0"
+                  className="w-7 h-7 object-contain shrink-0"
                 />
               </div>
             </div>
 
-            {/* INFOS */}
-            <div className="mt-2 text-xs text-gray-500 font-medium">
-              J{m.matchday} •{" "}
+            {/* INFOS MATCH */}
+            <div className="mt-3 flex justify-between items-center text-xs text-gray-500 font-medium">
+              <span>J{m.matchday}</span>
+
               <span
-                className={`${
+                className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${
                   m.status_label === "Live"
-                    ? "text-red-600 animate-pulse"
-                    : "text-gray-600"
+                    ? "bg-red-100 text-red-600 animate-pulse"
+                    : m.status_label === "Terminé"
+                    ? "bg-gray-100 text-gray-700"
+                    : "bg-blue-100 text-blue-600"
                 }`}
               >
                 {m.status_label}
               </span>
             </div>
+
           </div>
         ))}
       </div>
