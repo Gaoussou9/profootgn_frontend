@@ -1,6 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useParams } from "react-router-dom";
-import MatchCard from "../components/MatchCard";
 import CompetitionMatchCard from "../components/CompetitionMatchCard";
 
 import FAPGAZLogo from "../assets/competitions/FAPGAZ.jpeg";
@@ -63,6 +62,42 @@ export default function CompetitionPage() {
     return () => controller.abort();
   }, [id]);
 
+  /* ================= TRI PROFESSIONNEL ================= */
+
+  const sortedMatches = useMemo(() => {
+    const statusPriority = (match) => {
+      const s = (match.status || "").toUpperCase();
+
+      if (s === "SCHEDULED" || s === "NOT_STARTED") return 0; // Programmés
+      if (s === "LIVE") return 1; // Live
+      if (s === "FT" || s === "FINISHED") return 2; // Terminés
+
+      return 3;
+    };
+
+    return [...matches].sort((a, b) => {
+      const priorityDiff = statusPriority(a) - statusPriority(b);
+      if (priorityDiff !== 0) return priorityDiff;
+
+      const dateA = new Date(a.datetime || a.date || 0);
+      const dateB = new Date(b.datetime || b.date || 0);
+
+      // Programmés → plus proches en premier
+      if (statusPriority(a) === 0) {
+        return dateA - dateB;
+      }
+
+      // Terminés → plus récents en premier
+      if (statusPriority(a) === 2) {
+        return dateB - dateA;
+      }
+
+      return 0;
+    });
+  }, [matches]);
+
+  /* ================= LOADING ================= */
+
   if (loading) {
     return (
       <div className="max-w-sm mx-auto p-3 space-y-3 animate-pulse">
@@ -75,9 +110,7 @@ export default function CompetitionPage() {
   if (error) {
     return (
       <div className="text-center py-4">
-        <p className="text-red-500 text-sm">
-          ❌ {error}
-        </p>
+        <p className="text-red-500 text-sm">❌ {error}</p>
       </div>
     );
   }
@@ -85,7 +118,7 @@ export default function CompetitionPage() {
   return (
     <div className="max-w-sm mx-auto px-2 py-2 space-y-3">
 
-      {/* ================= HEADER COMPACT ================= */}
+      {/* ================= HEADER ================= */}
       {competition && (
         <div
           className="
@@ -96,7 +129,6 @@ export default function CompetitionPage() {
         >
           <div className="flex items-center gap-2">
 
-            {/* Logo légèrement agrandi */}
             <div className="w-16 h-16 bg-white/95 rounded-full
                             flex items-center justify-center
                             shadow-sm">
@@ -115,7 +147,6 @@ export default function CompetitionPage() {
             </div>
 
             <div className="flex-1">
-
               <h1 className="text-sm sm:text-base font-semibold leading-tight">
                 {competition.name}
               </h1>
@@ -131,31 +162,28 @@ export default function CompetitionPage() {
                   {matches.length} matchs
                 </span>
               </div>
-
             </div>
           </div>
         </div>
       )}
 
       {/* ================= MATCHS ================= */}
-      {matches.length === 0 ? (
+      {sortedMatches.length === 0 ? (
         <div className="bg-gray-50 border p-3 rounded-md text-center text-gray-500 text-sm">
           Aucun match disponible
         </div>
       ) : (
         <div className="space-y-2">
-          {matches.map((match) => (
+          {sortedMatches.map((match) => (
             <div
               key={match.id}
               className="transition duration-200 hover:scale-[1.01]"
             >
               <CompetitionMatchCard match={match} />
-
             </div>
           ))}
         </div>
       )}
-
     </div>
   );
 }
