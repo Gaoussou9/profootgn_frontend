@@ -14,7 +14,7 @@ const competitionLogos = {
 };
 
 export default function CompetitionPage() {
-  const { id } = useParams();
+  const { competitionId } = useParams();
 
   const [competition, setCompetition] = useState(null);
   const [matches, setMatches] = useState([]);
@@ -22,7 +22,10 @@ export default function CompetitionPage() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (!id) return;
+    if (!competitionId) {
+      setLoading(false);
+      return;
+    }
 
     const controller = new AbortController();
 
@@ -32,7 +35,7 @@ export default function CompetitionPage() {
         setError(null);
 
         const response = await fetch(
-          `${API_BASE}/api/competitions/${id}/matches/`,
+          `${API_BASE}/api/competitions/${competitionId}/matches/`,
           { signal: controller.signal }
         );
 
@@ -42,12 +45,13 @@ export default function CompetitionPage() {
 
         const data = await response.json();
 
+        // ✅ Sécurisation totale
         if (Array.isArray(data)) {
-          setMatches(data);
           setCompetition(null);
+          setMatches(data);
         } else {
-          setCompetition(data.competition || null);
-          setMatches(data.matches || []);
+          setCompetition(data?.competition ?? null);
+          setMatches(Array.isArray(data?.matches) ? data.matches : []);
         }
       } catch (err) {
         if (err.name !== "AbortError") {
@@ -60,17 +64,19 @@ export default function CompetitionPage() {
 
     fetchCompetition();
     return () => controller.abort();
-  }, [id]);
+  }, [competitionId]);
 
-  /* ================= TRI PROFESSIONNEL ================= */
+  /* ================= TRI ================= */
 
   const sortedMatches = useMemo(() => {
+    if (!Array.isArray(matches)) return [];
+
     const statusPriority = (match) => {
       const s = (match.status || "").toUpperCase();
 
-      if (s === "SCHEDULED" || s === "NOT_STARTED") return 0; // Programmés
-      if (s === "LIVE") return 1; // Live
-      if (s === "FT" || s === "FINISHED") return 2; // Terminés
+      if (s === "SCHEDULED" || s === "NOT_STARTED") return 0;
+      if (s === "LIVE") return 1;
+      if (s === "FT" || s === "FINISHED") return 2;
 
       return 3;
     };
@@ -79,18 +85,11 @@ export default function CompetitionPage() {
       const priorityDiff = statusPriority(a) - statusPriority(b);
       if (priorityDiff !== 0) return priorityDiff;
 
-      const dateA = new Date(a.datetime || a.date || 0);
-      const dateB = new Date(b.datetime || b.date || 0);
+      const dateA = new Date(a.datetime || 0);
+      const dateB = new Date(b.datetime || 0);
 
-      // Programmés → plus proches en premier
-      if (statusPriority(a) === 0) {
-        return dateA - dateB;
-      }
-
-      // Terminés → plus récents en premier
-      if (statusPriority(a) === 2) {
-        return dateB - dateA;
-      }
+      if (statusPriority(a) === 0) return dateA - dateB;
+      if (statusPriority(a) === 2) return dateB - dateA;
 
       return 0;
     });
@@ -118,21 +117,15 @@ export default function CompetitionPage() {
   return (
     <div className="max-w-sm mx-auto px-2 py-2 space-y-3">
 
-      {/* ================= HEADER ================= */}
+      {/* HEADER */}
       {competition && (
-        <div
-          className="
-            relative overflow-hidden rounded-lg shadow
-            bg-gradient-to-r from-slate-600 via-indigo-600 to-purple-600
-            text-white px-3 py-3
-          "
-        >
+        <div className="relative overflow-hidden rounded-lg shadow
+                        bg-gradient-to-r from-slate-600 via-indigo-600 to-purple-600
+                        text-white px-3 py-3">
           <div className="flex items-center gap-2">
 
             <div className="w-16 h-16 bg-white/95 rounded-full
-                            flex items-center justify-center
-                            shadow-sm">
-
+                            flex items-center justify-center shadow-sm">
               {competitionLogos[competition.id] ? (
                 <img
                   src={competitionLogos[competition.id]}
@@ -167,7 +160,7 @@ export default function CompetitionPage() {
         </div>
       )}
 
-      {/* ================= MATCHS ================= */}
+      {/* MATCHS */}
       {sortedMatches.length === 0 ? (
         <div className="bg-gray-50 border p-3 rounded-md text-center text-gray-500 text-sm">
           Aucun match disponible
@@ -179,7 +172,11 @@ export default function CompetitionPage() {
               key={match.id}
               className="transition duration-200 hover:scale-[1.01]"
             >
-              <CompetitionMatchCard match={match} />
+              <CompetitionMatchCard 
+  match={match} 
+  competitionId={competitionId} 
+/>
+
             </div>
           ))}
         </div>

@@ -24,7 +24,6 @@ import CompetitionMatchDetail from "./pages/CompetitionMatchDetail";
 function Layout() {
   const location = useLocation();
 
-  // Détecte si on est dans une compétition
   const isCompetitionPage = location.pathname.startsWith("/competitions/");
 
   return (
@@ -46,21 +45,37 @@ function Layout() {
 
           {/* ================= COMPÉTITIONS ================= */}
           <Route path="/competitions" element={<CompetitionsList />} />
-          <Route path="/competitions/:id" element={<CompetitionPage />} />
-          <Route path="/competitions/:id/classement" element={<CompetitionStandings />} />
-          <Route path="/competitions/:id/buteurs" element={<CompetitionScorers />} />
-          <Route path="/competitions/:id/clubs" element={<CompetitionClubs />} />
 
-          {/* ✅ MATCH DÉTAIL DANS UNE COMPÉTITION */}
+          {/* ⚠️ ROUTES SPÉCIFIQUES D'ABORD */}
           <Route
-            path="/competitions/:id/match/:matchId"
+            path="/competitions/:competitionId/match/:matchId"
             element={<CompetitionMatchDetail />}
           />
 
-          {/* ================= CLUB DANS UNE COMPÉTITION ================= */}
           <Route
             path="/competitions/:competitionId/clubs/:clubId"
             element={<ClubPage />}
+          />
+
+          <Route
+            path="/competitions/:competitionId/classement"
+            element={<CompetitionStandings />}
+          />
+
+          <Route
+            path="/competitions/:competitionId/buteurs"
+            element={<CompetitionScorers />}
+          />
+
+          <Route
+            path="/competitions/:competitionId/clubs"
+            element={<CompetitionClubs />}
+          />
+
+          {/* ⚠️ ROUTE GÉNÉRIQUE EN DERNIER */}
+          <Route
+            path="/competitions/:competitionId"
+            element={<CompetitionPage />}
           />
 
           {/* ================= 404 ================= */}
@@ -69,11 +84,9 @@ function Layout() {
         </Routes>
       </main>
 
-      {/* Hosts globaux */}
       <ClubSheetHost />
       <StaffSheetHost />
 
-      {/* Navigation dynamique */}
       {!isCompetitionPage && <BottomNav />}
       {isCompetitionPage && <CompetitionNav />}
     </>

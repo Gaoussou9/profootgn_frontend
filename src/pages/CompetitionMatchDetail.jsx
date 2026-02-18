@@ -1,110 +1,135 @@
-import { useNavigate, useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
 
-export default function CompetitionMatchCard({ match }) {
-  const navigate = useNavigate();
-  const { id: competitionId } = useParams();
+const API_BASE =
+  import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
 
-  if (!match) return null;
+export default function CompetitionMatchDetail() {
+  const { competitionId, matchId } = useParams();
 
-  const {
-    match: realMatchId,   // 👈 important
-    home_team,
-    away_team,
-    home_score,
-    away_score,
-    status_label,
-    matchday,
-  } = match;
+  const [match, setMatch] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (!competitionId || !matchId) return;
+
+    const controller = new AbortController();
+
+    async function fetchMatch() {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const response = await fetch(
+          `${API_BASE}/api/competitions/${competitionId}/matches/${matchId}/`,
+          { signal: controller.signal }
+        );
+
+        if (!response.ok) {
+          throw new Error("Match introuvable");
+        }
+
+        const data = await response.json();
+        setMatch(data);
+      } catch (err) {
+        if (err.name !== "AbortError") {
+          setError(err.message);
+        }
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchMatch();
+    return () => controller.abort();
+  }, [competitionId, matchId]);
+
+  if (loading) {
+    return (
+      <div className="text-center py-10 animate-pulse">
+        Chargement du match...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center text-red-500 py-10">
+        ❌ {error}
+      </div>
+    );
+  }
+
+  if (!match) {
+    return (
+      <div className="text-center py-10">
+        Aucun détail disponible
+      </div>
+    );
+  }
 
   return (
-    <div
-      onClick={() =>
-        navigate(`/competitions/${competitionId}/match/${realMatchId}`)
-      }
-      className="
-        bg-white rounded-2xl px-4 py-4
-        shadow-sm hover:shadow-lg
-        transition-all duration-300
-        cursor-pointer active:scale-[0.98]
-      "
-    >
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+    <div className="max-w-xl mx-auto bg-white rounded-2xl shadow p-6 space-y-6">
 
-        {/* HOME */}
-        <div className="flex items-center gap-2 min-w-0">
-          <img
-            src={home_team?.logo}
-            alt=""
-            className="w-7 h-7 object-contain shrink-0"
-          />
-          <span className="text-sm font-semibold truncate">
-            {home_team?.name}
-          </span>
+      <div className="text-center space-y-3">
+
+        <div className="flex justify-between items-center">
+          <div className="text-center flex-1">
+            <img
+              src={match.home_team?.logo}
+              alt=""
+              className="w-14 h-14 mx-auto object-contain"
+            />
+            <p className="font-semibold mt-2">
+              {match.home_team?.name}
+            </p>
+          </div>
+
+          <div className="text-3xl font-extrabold">
+            {match.home_score ?? 0} - {match.away_score ?? 0}
+          </div>
+
+          <div className="text-center flex-1">
+            <img
+              src={match.away_team?.logo}
+              alt=""
+              className="w-14 h-14 mx-auto object-contain"
+            />
+            <p className="font-semibold mt-2">
+              {match.away_team?.name}
+            </p>
+          </div>
         </div>
 
-        {/* SCORE */}
-        <div className="
-          flex items-center justify-center gap-3
-          text-2xl font-extrabold
-          tabular-nums whitespace-nowrap
-        ">
-          <span
-            className={
-              home_score > away_score
-                ? "text-green-600"
-                : "text-gray-900"
-            }
-          >
-            {home_score}
-          </span>
-
-          <span className="text-gray-400 text-lg">-</span>
-
-          <span
-            className={
-              away_score > home_score
-                ? "text-green-600"
-                : "text-gray-900"
-            }
-          >
-            {away_score}
-          </span>
+        <div className="text-sm text-gray-500">
+          Journée {match.matchday} • {match.status_label}
         </div>
-
-        {/* AWAY */}
-        <div className="flex items-center justify-end gap-2 min-w-0">
-          <span className="text-sm font-semibold truncate text-right">
-            {away_team?.name}
-          </span>
-          <img
-            src={away_team?.logo}
-            alt=""
-            className="w-7 h-7 object-contain shrink-0"
-          />
-        </div>
-
       </div>
 
-      <div className="mt-3 flex justify-between items-center text-xs font-medium">
-        <span className="text-gray-500">
-          Journée {matchday}
-        </span>
+      <div className="border-t pt-4">
+        {(!match.goals || match.goals.length === 0) &&
+        (!match.cards || match.cards.length === 0) ? (
+          <div className="text-center text-gray-500 text-sm">
+            Aucun événement disponible
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {match.goals?.map((goal) => (
+              <div key={goal.id} className="text-sm">
+                ⚽ {goal.player_name} ({goal.minute}')
+              </div>
+            ))}
 
-        <span
-          className={`
-            px-2 py-0.5 rounded-full text-[11px] font-semibold
-            ${
-              status_label === "Live"
-                ? "bg-red-100 text-red-600 animate-pulse"
-                : status_label === "Terminé"
-                ? "bg-gray-100 text-gray-700"
-                : "bg-blue-100 text-blue-600"
-            }
-          `}
-        >
-          {status_label}
-        </span>
+            {match.cards?.map((card) => (
+              <div key={card.id} className="text-sm">
+                🟨 {card.player_name} ({card.minute}')
+              </div>
+            ))}
+          </div>
+        )}
       </div>
+
     </div>
   );
 }

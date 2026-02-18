@@ -1,11 +1,9 @@
-// src/components/CompetitionMatchCard.jsx
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
-export default function CompetitionMatchCard({ match }) {
+export default function CompetitionMatchCard({ match, competitionId }) {
   const navigate = useNavigate();
-  const { id: competitionId } = useParams();
 
-  if (!match) return null;
+  if (!match || !competitionId) return null;
 
   const {
     id,
@@ -17,13 +15,13 @@ export default function CompetitionMatchCard({ match }) {
     matchday,
   } = match;
 
-  const goToMatch = () => {
+  const handleClick = () => {
     navigate(`/competitions/${competitionId}/match/${id}`);
   };
 
   return (
     <div
-      onClick={goToMatch}
+      onClick={handleClick}
       className="
         bg-white rounded-2xl px-4 py-4
         shadow-sm hover:shadow-lg
@@ -31,72 +29,56 @@ export default function CompetitionMatchCard({ match }) {
         cursor-pointer active:scale-[0.98]
       "
     >
-      {/* ================= LIGNE PRINCIPALE ================= */}
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
 
-        {/* HOME */}
         <div className="flex items-center gap-2 min-w-0">
           <img
-            src={home_team?.logo || "/club-placeholder.png"}
-            alt={home_team?.name}
+            src={home_team?.logo}
+            alt=""
             className="w-7 h-7 object-contain shrink-0"
-            onError={(e) =>
-              (e.currentTarget.src = "/club-placeholder.png")
-            }
           />
           <span className="text-sm font-semibold truncate">
             {home_team?.name}
           </span>
         </div>
 
-        {/* SCORE */}
-        <div
-          className="
-            flex items-center justify-center gap-3
-            text-2xl font-extrabold
-            tabular-nums whitespace-nowrap
-          "
-        >
-          <span
-            className={
-              home_score > away_score
-                ? "text-green-600"
-                : "text-gray-900"
-            }
-          >
+        <div className="
+          flex items-center justify-center gap-3
+          text-2xl font-extrabold
+          tabular-nums whitespace-nowrap
+        ">
+          <span className={
+            home_score > away_score
+              ? "text-green-600"
+              : "text-gray-900"
+          }>
             {home_score}
           </span>
 
           <span className="text-gray-400 text-lg">-</span>
 
-          <span
-            className={
-              away_score > home_score
-                ? "text-green-600"
-                : "text-gray-900"
-            }
-          >
+          <span className={
+            away_score > home_score
+              ? "text-green-600"
+              : "text-gray-900"
+          }>
             {away_score}
           </span>
         </div>
 
-        {/* AWAY */}
         <div className="flex items-center justify-end gap-2 min-w-0">
           <span className="text-sm font-semibold truncate text-right">
             {away_team?.name}
           </span>
           <img
-            src={away_team?.logo || "/club-placeholder.png"}
-            alt={away_team?.name}
+            src={away_team?.logo}
+            alt=""
             className="w-7 h-7 object-contain shrink-0"
-            onError={(e) =>
-              (e.currentTarget.src = "/club-placeholder.png")
-            }
           />
         </div>
+
       </div>
 
-      {/* ================= INFOS MATCH ================= */}
       <div className="mt-3 flex justify-between items-center text-xs font-medium">
         <span className="text-gray-500">
           Journée {matchday}
