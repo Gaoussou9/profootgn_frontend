@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import MatchCard from "../components/MatchCard";
+import CompetitionMatchCard from "../components/CompetitionMatchCard";
 
 import FAPGAZLogo from "../assets/competitions/FAPGAZ.jpeg";
 import LGFFLogo from "../assets/competitions/LGFF.jpeg";
@@ -148,7 +149,8 @@ export default function CompetitionPage() {
               key={match.id}
               className="transition duration-200 hover:scale-[1.01]"
             >
-              <MatchCard match={match} />
+              <CompetitionMatchCard match={match} />
+
             </div>
           ))}
         </div>
