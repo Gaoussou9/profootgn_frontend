@@ -1,4 +1,3 @@
-// src/components/CompetitionMatchCard.jsx
 import { useNavigate, useParams } from "react-router-dom";
 
 export default function CompetitionMatchCard({ match }) {
@@ -8,7 +7,7 @@ export default function CompetitionMatchCard({ match }) {
   if (!match) return null;
 
   const {
-    id,
+    match: realMatchId,   // 👈 important
     home_team,
     away_team,
     home_score,
@@ -17,13 +16,11 @@ export default function CompetitionMatchCard({ match }) {
     matchday,
   } = match;
 
-  const goToMatch = () => {
-    navigate(`/competitions/${competitionId}/match/${id}`);
-  };
-
   return (
     <div
-      onClick={goToMatch}
+      onClick={() =>
+        navigate(`/competitions/${competitionId}/match/${realMatchId}`)
+      }
       className="
         bg-white rounded-2xl px-4 py-4
         shadow-sm hover:shadow-lg
@@ -31,18 +28,14 @@ export default function CompetitionMatchCard({ match }) {
         cursor-pointer active:scale-[0.98]
       "
     >
-      {/* ================= LIGNE PRINCIPALE ================= */}
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
 
         {/* HOME */}
         <div className="flex items-center gap-2 min-w-0">
           <img
-            src={home_team?.logo || "/club-placeholder.png"}
-            alt={home_team?.name}
+            src={home_team?.logo}
+            alt=""
             className="w-7 h-7 object-contain shrink-0"
-            onError={(e) =>
-              (e.currentTarget.src = "/club-placeholder.png")
-            }
           />
           <span className="text-sm font-semibold truncate">
             {home_team?.name}
@@ -50,13 +43,11 @@ export default function CompetitionMatchCard({ match }) {
         </div>
 
         {/* SCORE */}
-        <div
-          className="
-            flex items-center justify-center gap-3
-            text-2xl font-extrabold
-            tabular-nums whitespace-nowrap
-          "
-        >
+        <div className="
+          flex items-center justify-center gap-3
+          text-2xl font-extrabold
+          tabular-nums whitespace-nowrap
+        ">
           <span
             className={
               home_score > away_score
@@ -86,17 +77,14 @@ export default function CompetitionMatchCard({ match }) {
             {away_team?.name}
           </span>
           <img
-            src={away_team?.logo || "/club-placeholder.png"}
-            alt={away_team?.name}
+            src={away_team?.logo}
+            alt=""
             className="w-7 h-7 object-contain shrink-0"
-            onError={(e) =>
-              (e.currentTarget.src = "/club-placeholder.png")
-            }
           />
         </div>
+
       </div>
 
-      {/* ================= INFOS MATCH ================= */}
       <div className="mt-3 flex justify-between items-center text-xs font-medium">
         <span className="text-gray-500">
           Journée {matchday}

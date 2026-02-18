@@ -5,8 +5,8 @@ import Standings from "./pages/Standings";
 import TopScorers from "./pages/TopScorers";
 import AssistsLeaders from "./pages/AssistsLeaders";
 import Clubs from "./pages/Clubs";
-import ClubDetail from "./pages/ClubDetail";   // club global
-import ClubPage from "./pages/ClubPage";       // club par compétition
+import ClubDetail from "./pages/ClubDetail";
+import ClubPage from "./pages/ClubPage";
 import MatchDetail from "./pages/MatchDetail";
 import CompetitionPage from "./pages/CompetitionPage";
 import CompetitionsList from "./pages/CompetitionsList";
@@ -19,21 +19,23 @@ import { StaffSheetHost } from "./components/StaffSheet";
 import CompetitionStandings from "./pages/CompetitionStandings";
 import CompetitionScorers from "./pages/CompetitionScorers";
 import CompetitionClubs from "./pages/CompetitionClubs";
+import CompetitionMatchDetail from "./pages/CompetitionMatchDetail";
 
 function Layout() {
   const location = useLocation();
 
-  // 👉 détecte si on est dans une compétition
+  // Détecte si on est dans une compétition
   const isCompetitionPage = location.pathname.startsWith("/competitions/");
 
   return (
     <>
       <main className="px-4 sm:px-6 md:px-8 py-4 max-w-6xl mx-auto pb-28">
         <Routes>
-          {/* Redirect racine */}
+
+          {/* ================= REDIRECT ================= */}
           <Route path="/" element={<Navigate to="/journees" replace />} />
 
-          {/* ===== GLOBAL ===== */}
+          {/* ================= GLOBAL ================= */}
           <Route path="/journees" element={<Home />} />
           <Route path="/classement" element={<Standings />} />
           <Route path="/buteurs" element={<TopScorers />} />
@@ -42,21 +44,28 @@ function Layout() {
           <Route path="/clubs/:id" element={<ClubDetail />} />
           <Route path="/match/:id" element={<MatchDetail />} />
 
-          {/* ===== COMPÉTITIONS ===== */}
+          {/* ================= COMPÉTITIONS ================= */}
           <Route path="/competitions" element={<CompetitionsList />} />
           <Route path="/competitions/:id" element={<CompetitionPage />} />
           <Route path="/competitions/:id/classement" element={<CompetitionStandings />} />
           <Route path="/competitions/:id/buteurs" element={<CompetitionScorers />} />
           <Route path="/competitions/:id/clubs" element={<CompetitionClubs />} />
 
-          {/* ===== CLUB DANS UNE COMPÉTITION ===== */}
+          {/* ✅ MATCH DÉTAIL DANS UNE COMPÉTITION */}
+          <Route
+            path="/competitions/:id/match/:matchId"
+            element={<CompetitionMatchDetail />}
+          />
+
+          {/* ================= CLUB DANS UNE COMPÉTITION ================= */}
           <Route
             path="/competitions/:competitionId/clubs/:clubId"
             element={<ClubPage />}
           />
 
-          {/* 404 */}
+          {/* ================= 404 ================= */}
           <Route path="*" element={<Navigate to="/journees" replace />} />
+
         </Routes>
       </main>
 
@@ -64,7 +73,7 @@ function Layout() {
       <ClubSheetHost />
       <StaffSheetHost />
 
-      {/* Navigation */}
+      {/* Navigation dynamique */}
       {!isCompetitionPage && <BottomNav />}
       {isCompetitionPage && <CompetitionNav />}
     </>
