@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import FormBadge from "../components/FormBadge";
 
-const API = import.meta.env.VITE_API_BASE_URL;
+const API =
+  import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
 
 export default function CompetitionStandings() {
-  const { id } = useParams();
+  // ✅ CORRECTION ICI
+  const { competitionId } = useParams();
 
   const [competition, setCompetition] = useState(null);
   const [table, setTable] = useState([]);
@@ -13,37 +15,53 @@ export default function CompetitionStandings() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (!id) return;
+    if (!competitionId) return;
 
     setLoading(true);
     setError(null);
 
-    fetch(`${API}/api/competitions/${id}/standings/`)
-      .then(res => {
-        if (!res.ok) throw new Error("Impossible de charger le classement");
+    fetch(`${API}/api/competitions/${competitionId}/standings/`)
+      .then((res) => {
+        if (!res.ok)
+          throw new Error("Impossible de charger le classement");
         return res.json();
       })
-      .then(data => {
+      .then((data) => {
         setCompetition(data.competition ?? null);
         setTable(data.standings ?? []);
         setLoading(false);
       })
-      .catch(err => {
+      .catch((err) => {
         setError(err.message);
         setLoading(false);
       });
-  }, [id]);
+  }, [competitionId]);
 
-  if (loading) return <p>Chargement…</p>;
-  if (error) return <p className="text-red-500">{error}</p>;
-  if (!table.length) return <p>Aucun classement disponible</p>;
+  if (loading)
+    return <p className="text-center py-6">Chargement…</p>;
+
+  if (error)
+    return (
+      <p className="text-center text-red-500 py-6">
+        {error}
+      </p>
+    );
+
+  if (!table.length)
+    return (
+      <p className="text-center py-6">
+        Aucun classement disponible
+      </p>
+    );
 
   return (
     <div className="bg-white rounded-2xl shadow p-3">
       {/* ===== TITRE ===== */}
       {competition && (
         <div className="mb-3">
-          <h2 className="text-base font-bold">{competition.name}</h2>
+          <h2 className="text-base font-bold">
+            {competition.name}
+          </h2>
           <p className="text-xs text-gray-500">
             Saison {competition.season}
           </p>
@@ -79,13 +97,16 @@ export default function CompetitionStandings() {
                   : "text-gray-500";
 
               return (
-                <tr key={row.team.id} className="border-b last:border-0">
+                <tr
+                  key={row.team.id}
+                  className="border-b last:border-0"
+                >
                   {/* POSITION */}
                   <td className="text-center font-semibold px-1">
                     {index + 1}
                   </td>
 
-                  {/* ÉQUIPE + FORME */}
+                  {/* ÉQUIPE + FORMES VND */}
                   <td className="px-2 py-2">
                     <div className="flex items-center gap-2">
                       {row.team.logo && (
@@ -101,9 +122,9 @@ export default function CompetitionStandings() {
                           {row.team.name}
                         </div>
 
-                        {/* FORMES MINI */}
+                        {/* ✅ VND EN COULEUR */}
                         {row.form?.length > 0 && (
-                          <div className="flex gap-[0.5px] mt-0.5">
+                          <div className="flex gap-[2px] mt-1">
                             {row.form.map((f, i) => (
                               <FormBadge key={i} value={f} />
                             ))}
@@ -114,19 +135,33 @@ export default function CompetitionStandings() {
                   </td>
 
                   {/* STATS */}
-                  <td className="border-l text-center">{row.played}</td>
-                  <td className="border-l text-center">{row.wins}</td>
-                  <td className="border-l text-center">{row.draws}</td>
-                  <td className="border-l text-center">{row.losses}</td>
-                  <td className="border-l text-center">{row.goals_for}</td>
-                  <td className="border-l text-center">{row.goals_against}</td>
+                  <td className="border-l text-center">
+                    {row.played}
+                  </td>
+                  <td className="border-l text-center">
+                    {row.wins}
+                  </td>
+                  <td className="border-l text-center">
+                    {row.draws}
+                  </td>
+                  <td className="border-l text-center">
+                    {row.losses}
+                  </td>
+                  <td className="border-l text-center">
+                    {row.goals_for}
+                  </td>
+                  <td className="border-l text-center">
+                    {row.goals_against}
+                  </td>
 
-                  <td className={`border-l text-center font-semibold ${diffColor}`}>
+                  <td
+                    className={`border-l text-center font-semibold ${diffColor}`}
+                  >
                     {row.goal_difference > 0 && "+"}
                     {row.goal_difference}
                   </td>
 
-                  {/* POINTS + PÉNALITÉ */}
+                  {/* POINTS */}
                   <td className="border-l text-center font-bold text-blue-600">
                     {row.points}
                     {row.penalty_points > 0 && (

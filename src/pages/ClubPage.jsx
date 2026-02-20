@@ -53,9 +53,10 @@ export default function ClubPage() {
         return res.json();
       })
       .then(json => {
-        setMatches(json.matches || []);
-        setLoadingMatches(false);
-      })
+  setMatches(Array.isArray(json) ? json : []);
+  setLoadingMatches(false);
+})
+
       .catch(err => {
         console.error(err);
         setLoadingMatches(false);
@@ -88,7 +89,8 @@ export default function ClubPage() {
   if (error) return <p className="p-4 text-red-500">{error}</p>;
   if (!data) return <p className="p-4">Club introuvable</p>;
 
-  const { club, competition, stats } = data;
+  const { club, competition, stats = {} } = data;
+
 
   return (
     <div className="pb-28">
@@ -117,10 +119,11 @@ export default function ClubPage() {
 
         {/* STATS RAPIDES */}
         <div className="flex justify-around mt-4 text-center">
-          <Stat label="Pos" value={stats.position} />
-          <Stat label="Pts" value={stats.points} />
-          <Stat label="J" value={stats.played} />
-          <Stat label="Diff" value={stats.goal_difference} />
+          <Stat label="Pos" value={stats?.position ?? "-"} />
+<Stat label="Pts" value={stats?.points ?? "-"} />
+<Stat label="J" value={stats?.played ?? "-"} />
+<Stat label="Diff" value={stats?.goal_difference ?? "-"} />
+
         </div>
       </div>
 
@@ -169,14 +172,19 @@ export default function ClubPage() {
 
                   return (
                     <button
-                      key={match.id}
-                      onClick={() => navigate(`/match/${match.id}`)}
-                      className="
-                        w-full bg-white rounded-xl shadow
-                        px-4 py-3 flex items-center justify-between
-                        active:scale-95 transition
-                      "
-                    >
+  key={match.id}
+  onClick={() =>
+    navigate(
+      `/competitions/${competitionId}/match/${match.id}`
+    )
+  }
+  className="
+    w-full bg-white rounded-xl shadow
+    px-4 py-3 flex items-center justify-between
+    active:scale-95 transition
+  "
+>
+
                       <div className="flex items-center gap-2 w-[40%]">
                         {home.logo && (
                           <img
