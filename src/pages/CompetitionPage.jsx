@@ -21,6 +21,8 @@ export default function CompetitionPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  /* ================= FETCH ================= */
+
   useEffect(() => {
     if (!competitionId) {
       setLoading(false);
@@ -45,7 +47,6 @@ export default function CompetitionPage() {
 
         const data = await response.json();
 
-        // ✅ Sécurisation totale
         if (Array.isArray(data)) {
           setCompetition(null);
           setMatches(data);
@@ -66,42 +67,34 @@ export default function CompetitionPage() {
     return () => controller.abort();
   }, [competitionId]);
 
-  /* ================= TRI ================= */
+  /* ================= GROUP BY MATCHDAY ================= */
 
-  const sortedMatches = useMemo(() => {
-    if (!Array.isArray(matches)) return [];
+  const groupedMatches = useMemo(() => {
+    if (!Array.isArray(matches)) return {};
 
-    const statusPriority = (match) => {
-      const s = (match.status || "").toUpperCase();
+    return matches.reduce((acc, match) => {
+      const day = match.matchday || 0;
 
-      if (s === "SCHEDULED" || s === "NOT_STARTED") return 0;
-      if (s === "LIVE") return 1;
-      if (s === "FT" || s === "FINISHED") return 2;
+      if (!acc[day]) acc[day] = [];
+      acc[day].push(match);
 
-      return 3;
-    };
-
-    return [...matches].sort((a, b) => {
-      const priorityDiff = statusPriority(a) - statusPriority(b);
-      if (priorityDiff !== 0) return priorityDiff;
-
-      const dateA = new Date(a.datetime || 0);
-      const dateB = new Date(b.datetime || 0);
-
-      if (statusPriority(a) === 0) return dateA - dateB;
-      if (statusPriority(a) === 2) return dateB - dateA;
-
-      return 0;
-    });
+      return acc;
+    }, {});
   }, [matches]);
+
+  const sortedMatchdays = useMemo(() => {
+    return Object.keys(groupedMatches)
+      .map(Number)
+      .sort((a, b) => a - b); // J1 → J2 → J3
+  }, [groupedMatches]);
 
   /* ================= LOADING ================= */
 
   if (loading) {
     return (
-      <div className="max-w-sm mx-auto p-3 space-y-3 animate-pulse">
-        <div className="h-16 rounded-lg bg-gray-200"></div>
-        <div className="h-14 rounded-lg bg-gray-200"></div>
+      <div className="max-w-sm mx-auto p-4 space-y-3 animate-pulse">
+        <div className="h-20 rounded-xl bg-gray-200"></div>
+        <div className="h-16 rounded-xl bg-gray-200"></div>
       </div>
     );
   }
@@ -115,17 +108,18 @@ export default function CompetitionPage() {
   }
 
   return (
-    <div className="max-w-sm mx-auto px-2 py-2 space-y-3">
+    <div className="max-w-sm mx-auto px-3 py-3 space-y-4">
 
-      {/* HEADER */}
+      {/* ================= HEADER ================= */}
+
       {competition && (
-        <div className="relative overflow-hidden rounded-lg shadow
-                        bg-gradient-to-r from-slate-600 via-indigo-600 to-purple-600
-                        text-white px-3 py-3">
-          <div className="flex items-center gap-2">
+        <div className="relative overflow-hidden rounded-2xl shadow-lg
+                        bg-gradient-to-r from-slate-700 via-indigo-600 to-purple-600
+                        text-white px-4 py-4">
+          <div className="flex items-center gap-3">
 
-            <div className="w-16 h-16 bg-white/95 rounded-full
-                            flex items-center justify-center shadow-sm">
+            <div className="w-16 h-16 bg-white/90 rounded-full
+                            flex items-center justify-center shadow-md">
               {competitionLogos[competition.id] ? (
                 <img
                   src={competitionLogos[competition.id]}
@@ -133,14 +127,14 @@ export default function CompetitionPage() {
                   className="w-12 h-12 object-contain"
                 />
               ) : (
-                <span className="text-indigo-700 font-bold text-base">
+                <span className="text-indigo-700 font-bold text-lg">
                   {competition.name?.charAt(0)}
                 </span>
               )}
             </div>
 
             <div className="flex-1">
-              <h1 className="text-sm sm:text-base font-semibold leading-tight">
+              <h1 className="text-base font-semibold leading-tight">
                 {competition.name}
               </h1>
 
@@ -150,8 +144,9 @@ export default function CompetitionPage() {
                 </p>
               )}
 
-              <div className="mt-1">
-                <span className="bg-white/20 px-2 py-0.5 rounded-full text-xs">
+              <div className="mt-2">
+                <span className="bg-white/20 backdrop-blur
+                                 px-3 py-1 rounded-full text-xs">
                   {matches.length} matchs
                 </span>
               </div>
@@ -160,25 +155,53 @@ export default function CompetitionPage() {
         </div>
       )}
 
-      {/* MATCHS */}
-      {sortedMatches.length === 0 ? (
-        <div className="bg-gray-50 border p-3 rounded-md text-center text-gray-500 text-sm">
+      {/* ================= MATCHS PREMIUM ================= */}
+
+      {sortedMatchdays.length === 0 ? (
+        <div className="bg-gray-50 border p-3 rounded-lg text-center text-gray-500 text-sm">
           Aucun match disponible
         </div>
       ) : (
-        <div className="space-y-2">
-          {sortedMatches.map((match) => (
-            <div
-              key={match.id}
-              className="transition duration-200 hover:scale-[1.01]"
-            >
-              <CompetitionMatchCard 
-  match={match} 
-  competitionId={competitionId} 
-/>
+        <div className="flex gap-5 overflow-x-auto pb-4 snap-x snap-mandatory">
 
+          {sortedMatchdays.map((day) => (
+            <div
+              key={day}
+              className="min-w-[280px] snap-start
+                         bg-white rounded-2xl shadow-md
+                         border border-gray-100
+                         flex flex-col"
+            >
+              {/* HEADER JOURNÉE STICKY */}
+              <div className="sticky top-0 z-10
+                              bg-gradient-to-r from-indigo-500 to-purple-500
+                              text-white
+                              px-4 py-2 rounded-t-2xl
+                              shadow-sm">
+                <h2 className="text-sm font-semibold">
+                  Journée {day}
+                </h2>
+              </div>
+
+              {/* MATCH LIST */}
+              <div className="p-3 space-y-3 bg-gray-50 rounded-b-2xl">
+                {groupedMatches[day].map((match) => (
+                  <div
+                    key={match.id}
+                    className="transition duration-200
+                               hover:scale-[1.02]
+                               hover:shadow-lg"
+                  >
+                    <CompetitionMatchCard
+                      match={match}
+                      competitionId={competitionId}
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
           ))}
+
         </div>
       )}
     </div>
