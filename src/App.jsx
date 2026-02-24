@@ -20,6 +20,7 @@ import CompetitionStandings from "./pages/CompetitionStandings";
 import CompetitionScorers from "./pages/CompetitionScorers";
 import CompetitionClubs from "./pages/CompetitionClubs";
 import CompetitionMatchDetail from "./pages/CompetitionMatchDetail";
+import CompetitionPlayerDetail from "./pages/CompetitionPlayerDetail";
 
 function Layout() {
   const location = useLocation();
@@ -77,6 +78,10 @@ function Layout() {
             path="/competitions/:competitionId"
             element={<CompetitionPage />}
           />
+           <Route 
+  path="/competitions/:competitionId/clubs/:clubId/players/:playerId"
+  element={<CompetitionPlayerDetail />}
+/>
 
           {/* ================= 404 ================= */}
           <Route path="*" element={<Navigate to="/journees" replace />} />

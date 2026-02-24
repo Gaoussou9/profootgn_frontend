@@ -41,7 +41,7 @@ export default function ClubPage() {
       });
   }, [competitionId, clubId]);
 
-  /* ================= FETCH MATCHES DU CLUB ================= */
+  /* ================= FETCH MATCHES ================= */
   useEffect(() => {
     if (!competitionId || !clubId) return;
 
@@ -53,17 +53,16 @@ export default function ClubPage() {
         return res.json();
       })
       .then(json => {
-  setMatches(Array.isArray(json) ? json : []);
-  setLoadingMatches(false);
-})
-
+        setMatches(Array.isArray(json) ? json : []);
+        setLoadingMatches(false);
+      })
       .catch(err => {
         console.error(err);
         setLoadingMatches(false);
       });
   }, [competitionId, clubId]);
 
-  /* ================= FETCH JOUEURS (EFFECTIF) ================= */
+  /* ================= FETCH EFFECTIF ================= */
   useEffect(() => {
     if (!competitionId || !clubId) return;
     if (activeTab !== "squad") return;
@@ -91,11 +90,10 @@ export default function ClubPage() {
 
   const { club, competition, stats = {} } = data;
 
-
   return (
     <div className="pb-28">
 
-      {/* ================= HEADER CLUB ================= */}
+      {/* ================= HEADER ================= */}
       <div className="bg-white rounded-b-2xl shadow px-4 pt-5 pb-6">
         <div className="flex items-center gap-4">
           {club.logo ? (
@@ -117,47 +115,31 @@ export default function ClubPage() {
           </div>
         </div>
 
-        {/* STATS RAPIDES */}
         <div className="flex justify-around mt-4 text-center">
           <Stat label="Pos" value={stats?.position ?? "-"} />
-<Stat label="Pts" value={stats?.points ?? "-"} />
-<Stat label="J" value={stats?.played ?? "-"} />
-<Stat label="Diff" value={stats?.goal_difference ?? "-"} />
-
+          <Stat label="Pts" value={stats?.points ?? "-"} />
+          <Stat label="J" value={stats?.played ?? "-"} />
+          <Stat label="Diff" value={stats?.goal_difference ?? "-"} />
         </div>
       </div>
 
-      {/* ================= ONGLET NAV ================= */}
+      {/* ================= TABS ================= */}
       <div className="sticky top-0 z-10 bg-white border-b">
         <div className="flex">
-          <TabButton
-            label="Matchs"
-            active={activeTab === "matches"}
-            onClick={() => setActiveTab("matches")}
-          />
-          <TabButton
-            label="Effectif"
-            active={activeTab === "squad"}
-            onClick={() => setActiveTab("squad")}
-          />
-          <TabButton
-            label="Staff"
-            active={activeTab === "staff"}
-            onClick={() => setActiveTab("staff")}
-          />
+          <TabButton label="Matchs" active={activeTab === "matches"} onClick={() => setActiveTab("matches")} />
+          <TabButton label="Effectif" active={activeTab === "squad"} onClick={() => setActiveTab("squad")} />
+          <TabButton label="Staff" active={activeTab === "staff"} onClick={() => setActiveTab("staff")} />
         </div>
       </div>
 
-      {/* ================= CONTENU ================= */}
+      {/* ================= CONTENT ================= */}
       <div className="p-4">
 
         {/* ===== MATCHS ===== */}
         {activeTab === "matches" && (
           <Section title="Matchs du club">
             {loadingMatches ? (
-              <p className="text-xs text-gray-500">
-                Chargement des matchs…
-              </p>
+              <p className="text-xs text-gray-500">Chargement des matchs…</p>
             ) : matches.length === 0 ? (
               <Empty text="Aucun match disponible pour ce club." />
             ) : (
@@ -172,30 +154,17 @@ export default function ClubPage() {
 
                   return (
                     <button
-  key={match.id}
-  onClick={() =>
-    navigate(
-      `/competitions/${competitionId}/match/${match.id}`
-    )
-  }
-  className="
-    w-full bg-white rounded-xl shadow
-    px-4 py-3 flex items-center justify-between
-    active:scale-95 transition
-  "
->
-
+                      key={match.id}
+                      onClick={() =>
+                        navigate(`/competitions/${competitionId}/match/${match.id}`)
+                      }
+                      className="w-full bg-white rounded-xl shadow px-4 py-3 flex items-center justify-between active:scale-95 transition"
+                    >
                       <div className="flex items-center gap-2 w-[40%]">
                         {home.logo && (
-                          <img
-                            src={home.logo}
-                            alt={home.name}
-                            className="w-7 h-7 object-contain"
-                          />
+                          <img src={home.logo} alt={home.name} className="w-7 h-7 object-contain" />
                         )}
-                        <span className="text-sm font-medium truncate">
-                          {home.name}
-                        </span>
+                        <span className="text-sm font-medium truncate">{home.name}</span>
                       </div>
 
                       <div className="text-sm font-bold w-[20%] text-center">
@@ -203,15 +172,9 @@ export default function ClubPage() {
                       </div>
 
                       <div className="flex items-center gap-2 justify-end w-[40%]">
-                        <span className="text-sm font-medium truncate text-right">
-                          {away.name}
-                        </span>
+                        <span className="text-sm font-medium truncate text-right">{away.name}</span>
                         {away.logo && (
-                          <img
-                            src={away.logo}
-                            alt={away.name}
-                            className="w-7 h-7 object-contain"
-                          />
+                          <img src={away.logo} alt={away.name} className="w-7 h-7 object-contain" />
                         )}
                       </div>
                     </button>
@@ -226,43 +189,51 @@ export default function ClubPage() {
         {activeTab === "squad" && (
           <Section title="Effectif">
             {loadingPlayers ? (
-              <p className="text-xs text-gray-500">
-                Chargement de l’effectif…
-              </p>
+              <p className="text-xs text-gray-500">Chargement de l’effectif…</p>
             ) : players.length === 0 ? (
               <Empty text="Aucun joueur enregistré pour ce club." />
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {players.map(player => (
-                  <div
+                  <button
                     key={player.id}
+                    onClick={() =>
+                      navigate(
+                        `/competitions/${competitionId}/clubs/${clubId}/players/${player.id}`
+                      )
+                    }
                     className="
                       bg-white rounded-xl shadow
                       p-3 flex flex-col items-center
+                      transition duration-200
+                      hover:shadow-lg hover:-translate-y-1
+                      active:scale-95
                     "
                   >
                     {player.photo ? (
                       <img
                         src={player.photo}
                         alt={player.name}
-                        className="w-14 h-14 rounded-full object-cover mb-2"
+                        className="w-16 h-16 rounded-full object-cover mb-2 border"
                       />
                     ) : (
-                      <div className="w-14 h-14 rounded-full bg-gray-200 mb-2" />
+                      <div className="w-16 h-16 rounded-full bg-gray-200 mb-2" />
                     )}
 
-                    <div className="text-sm font-medium truncate">
+                    <div className="text-sm font-semibold truncate text-center">
                       {player.name}
                     </div>
+
                     <div className="text-[11px] text-gray-500">
                       {player.position || "—"}
                     </div>
+
                     {player.number && (
                       <div className="text-xs font-bold text-blue-600 mt-1">
                         #{player.number}
                       </div>
                     )}
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
@@ -275,7 +246,6 @@ export default function ClubPage() {
             <Empty text="Le staff du club sera affiché ici." />
           </Section>
         )}
-
       </div>
     </div>
   );
