@@ -85,7 +85,7 @@ export default function CompetitionPage() {
   const sortedMatchdays = useMemo(() => {
     return Object.keys(groupedMatches)
       .map(Number)
-      .sort((a, b) => a - b); // J1 → J2 → J3
+      .sort((a, b) => b - a); // J1 → J2 → J3
   }, [groupedMatches]);
 
   /* ================= LOADING ================= */
