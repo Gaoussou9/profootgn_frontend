@@ -70,14 +70,13 @@ export default function ClubPage() {
       .catch(() => setLoadingPlayers(false));
   }, [competitionId, clubId, activeTab]);
 
-  if (loading) return <p className="p-4">Chargement du club…</p>;
+  if (loading) return <p className="p-4">Chargement…</p>;
   if (error) return <p className="p-4 text-red-500">{error}</p>;
   if (!data) return <p className="p-4">Club introuvable</p>;
 
   const { club, competition, stats = {} } = data;
 
-  /* ================= REGROUPEMENT PAR POSTE ================= */
-
+  /* ================= REGROUPEMENT ================= */
   const groupByPosition = (type) => {
     return players.filter(p => {
       const pos = (p.position || "").toUpperCase();
@@ -186,97 +185,90 @@ export default function ClubPage() {
           </>
         )}
 
-        {/* ================= EFFECTIF PREMIUM ================= */}
+        {/* ================= EFFECTIF VERSION PRO ================= */}
         {activeTab === "squad" && (
-          <>
-            {loadingPlayers ? (
-              <p className="text-xs text-gray-500">Chargement…</p>
-            ) : (
-              <div className="bg-white rounded-2xl shadow overflow-hidden">
+          <div className="bg-white rounded-2xl shadow overflow-hidden">
 
-                {sections.map(section => {
-                  const playersInSection = groupByPosition(section.key);
-                  if (playersInSection.length === 0) return null;
+            {sections.map(section => {
+              const playersInSection = groupByPosition(section.key);
+              if (!playersInSection.length) return null;
 
-                  return (
-                    <div key={section.key}>
+              return (
+                <div key={section.key}>
 
-                      <div className="bg-emerald-700 text-white px-4 py-2 text-xs font-bold flex justify-between">
-                        <span>{section.label}</span>
-                        <div className="flex gap-6 text-[11px] font-semibold">
-                          <span>PJ</span>
-                          <span>⚽</span>
-                          <img
-  src="/icons/cleat_20.png"
-  alt="Assist"
-  className="w-4 h-4 object-contain"
-/>
-                          <span>🟨</span>
-                          <span>🟥</span>
-                        </div>
-                      </div>
+                  {/* HEADER */}
+                  <div className="bg-emerald-700 text-white text-xs font-bold">
+                    <div className="grid grid-cols-[40px_1fr_28px_28px_28px_28px_28px] px-3 py-3 items-center">
 
-                      {playersInSection.map(player => (
-                        <button
-                          key={player.id}
-                          onClick={() =>
-                            navigate(`/competitions/${competitionId}/clubs/${clubId}/players/${player.id}`)
-                          }
-                          className="w-full flex items-center px-4 py-3 border-b hover:bg-gray-50 transition"
-                        >
-
-                          <div className="w-8 text-center font-bold text-gray-500 text-sm">
-                            {player.number || "-"}
-                          </div>
-
-                          <div className="mx-3">
-                            {player.photo ? (
-                              <img
-                                src={player.photo}
-                                alt={player.name}
-                                className="w-10 h-10 rounded-full object-cover"
-                              />
-                            ) : (
-                              <div className="w-10 h-10 rounded-full bg-gray-200" />
-                            )}
-                          </div>
-
-                          <div className="flex-1 text-left">
-                            <div className="flex items-center gap-2 font-semibold text-sm">
-                              {player.name}
-
-                              {(player.nationality_flag || player.country_code) && (
-                                <img
-                                  src={
-                                    player.nationality_flag
-                                      ? player.nationality_flag
-                                      : `https://flagcdn.com/w20/${(player.country_code || "").toLowerCase()}.png`
-                                  }
-                                  alt=""
-                                  className="w-5 h-5 rounded-full object-cover border"
-                                />
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-6 text-xs font-semibold text-gray-700 min-w-[160px] justify-end">
-                            <span>{Number(player.played) || 0}</span>
-                            <span>{Number(player.goals) || 0}</span>
-                            <span>{Number(player.assists) || 0}</span>
-                            <span>{Number(player.yellow_cards) || 0}</span>
-                            <span>{Number(player.red_cards) || 0}</span>
-                          </div>
-
-                        </button>
-                      ))}
+                      <div className="text-center">#</div>
+                      <div>{section.label}</div>
+                      <div className="text-center">PJ</div>
+                      <div className="text-center">⚽</div>
+                      <div className="flex justify-center">
+  <img
+    src="/icons/cleat_20.png"
+    alt="Assist"
+    className="w-5 h-5 object-contain"
+  />
+</div>
+                      <div className="text-center">🟨</div>
+                      <div className="text-center">🟥</div>
 
                     </div>
-                  );
-                })}
+                  </div>
 
-              </div>
-            )}
-          </>
+                  {/* LIGNES */}
+                 {playersInSection.map((player, index) => (
+  <button
+    key={player.id}
+    onClick={() =>
+      navigate(
+        `/competitions/${competitionId}/clubs/${clubId}/players/${player.id}`
+      )
+    }
+    className={`grid grid-cols-[40px_1fr_28px_28px_28px_28px_28px]
+    px-3 py-3 items-center text-sm w-full text-left
+    ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}
+    hover:bg-gray-100 active:scale-[0.99] transition`}
+  >
+
+    {/* Numéro */}
+    <div className="text-center font-semibold text-gray-600">
+      {player.number || "-"}
+    </div>
+
+    {/* Nom + Photo */}
+    <div className="flex items-center gap-2 overflow-hidden">
+      {player.photo ? (
+        <img
+          src={player.photo}
+          alt={player.name}
+          className="w-8 h-8 rounded-full object-cover"
+        />
+      ) : (
+        <div className="w-8 h-8 rounded-full bg-gray-200" />
+      )}
+
+      <span className="font-medium whitespace-nowrap overflow-hidden text-ellipsis">
+        {player.name}
+      </span>
+    </div>
+
+    {/* Stats */}
+    <div className="text-center">{player.played ?? 0}</div>
+    <div className="text-center">{player.goals ?? 0}</div>
+    <div className="text-center">{player.assists ?? 0}</div>
+    <div className="text-center">{player.yellow_cards ?? 0}</div>
+    <div className="text-center">{player.red_cards ?? 0}</div>
+
+  </button>
+))}
+
+                </div>
+              );
+            })}
+
+          </div>
         )}
 
       </div>
