@@ -1,4 +1,5 @@
 // src/pages/ClubDetail.jsx
+
 import { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import api from "../api/client";
