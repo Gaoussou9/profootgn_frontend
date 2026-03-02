@@ -39,7 +39,7 @@ export default function MatchCard({ match }) {
     intervalRef.current = setInterval(() => {
       currentMinute += 1;
       setMinute(currentMinute);
-    }, 60_000);
+    }, 60000);
 
     return () => {
       if (intervalRef.current) {

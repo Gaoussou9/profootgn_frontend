@@ -416,7 +416,7 @@ export default function Home() {
       const arr = Array.isArray(r.data) ? r.data : r.data.results || [];
       setLive(arr);
     } catch {}
-  }, 20000); // 🔥 20 secondes au lieu de 15
+  }, 60000); // 🔥 60 secondes au lieu de 15
 
   return () => clearInterval(id);
 }, [live.length]);
