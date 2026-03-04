@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import api from "../api/client";
 import SilkcoatAd from "../components/SilkcoatAd";
 
+import { useLive } from "../context/LiveContext";
 
 /* ---------- Helpers UI ---------- */
 
@@ -75,6 +76,7 @@ const fmtDate = (iso) => (iso ? new Date(iso).toLocaleString() : "");
    ========================================================= */
 function useServerSyncedMinute(match) {
   const { status, live_phase_start, live_phase_offset, minute } = match || {};
+  
 
   const [shownMinute, setShownMinute] = useState(null);
   const tickRef = useRef(null);
@@ -349,6 +351,10 @@ function pickDefaultRound({ live = [], upcoming = [], recent = [] }) {
 
 /* ---------- Page d’accueil ---------- */
 export default function Home() {
+const { liveMatches } = useLive();
+  // 🔥 Helper ajouté
+
+
   const [round, setRound] = useState(null);
 
   const [live, setLive] = useState([]);
@@ -371,30 +377,30 @@ export default function Home() {
     }
   }, []);
 
+  // ✅ CHARGEMENT INITIAL (INTOUCHABLE)
   useEffect(() => {
     let stop = false;
     (async () => {
       setLoad(true);
       try {
-        const [rLive, rUpcoming, rRecent, rSusp, rPost, rCanc] = await Promise.all([
-          api.get("matches/live/").catch(() => ({ data: [] })),
-          api.get("matches/?status=SCHEDULED&ordering=datetime&page_size=1000").catch(() => ({ data: [] })),
-          api.get("matches/?status=FT&ordering=-datetime&page_size=1000").catch(() => ({ data: [] })),
-          api.get("matches/?status=SUSPENDED&ordering=-datetime&page_size=1000").catch(() => ({ data: [] })),
-          api.get("matches/?status=POSTPONED&ordering=-datetime&page_size=1000").catch(() => ({ data: [] })),
-          api.get("matches/?status=CANCELED&ordering=-datetime&page_size=1000").catch(() => ({ data: [] })),
-        ]);
+      const [rUpcoming, rRecent, rSusp, rPost, rCanc] = await Promise.all([
+  api.get("matches/?status=SCHEDULED&ordering=datetime&page_size=1000").catch(() => ({ data: [] })),
+  api.get("matches/?status=FT&ordering=-datetime&page_size=1000").catch(() => ({ data: [] })),
+  api.get("matches/?status=SUSPENDED&ordering=-datetime&page_size=1000").catch(() => ({ data: [] })),
+  api.get("matches/?status=POSTPONED&ordering=-datetime&page_size=1000").catch(() => ({ data: [] })),
+  api.get("matches/?status=CANCELED&ordering=-datetime&page_size=1000").catch(() => ({ data: [] })),
+]);
 
-        const getArr = (res) => (Array.isArray(res?.data) ? res.data : res?.data?.results) || [];
+        const getArr = (res) =>
+          (Array.isArray(res?.data) ? res.data : res?.data?.results) || [];
 
         if (!stop) {
-          setLive(getArr(rLive));
+          
           setUpcoming(getArr(rUpcoming));
-          setRecent(getArr(rRecent));
-          setSuspended(getArr(rSusp));
-          setPostponed(getArr(rPost));
-          setCanceled(getArr(rCanc));
-          setError(null);
+setRecent(getArr(rRecent));
+setSuspended(getArr(rSusp));
+setPostponed(getArr(rPost));
+setCanceled(getArr(rCanc));
         }
       } catch (e) {
         if (!stop) setError(e.message || "Erreur de chargement");
@@ -407,41 +413,15 @@ export default function Home() {
     };
   }, []);
 
-  useEffect(() => {
-  if (!live.length) return; // 🔥 Ne poll que s'il y a un match LIVE
+  // ✅ Réagit au LiveProvider (plus de polling ici)
+useEffect(() => {
+  if (!liveMatches) return;
 
-  const id = setInterval(async () => {
-    try {
-      const r = await api.get("matches/live/");
-      const arr = Array.isArray(r.data) ? r.data : r.data.results || [];
-      setLive(arr);
-    } catch {}
-  }, 60000); // 🔥 60 secondes au lieu de 15
+  setLive(liveMatches);
 
-  return () => clearInterval(id);
-}, [live.length]);
-
-  useEffect(() => {
-    const id = setInterval(async () => {
-      try {
-        const [rUpcoming, rRecent, rSusp, rPost, rCanc] = await Promise.all([
-          api.get("matches/?status=SCHEDULED&ordering=datetime&page_size=1000").catch(() => ({ data: [] })),
-          api.get("matches/?status=FT&ordering=-datetime&page_size=1000").catch(() => ({ data: [] })),
-          api.get("matches/?status=SUSPENDED&ordering=-datetime&page_size=1000").catch(() => ({ data: [] })),
-          api.get("matches/?status=POSTPONED&ordering=-datetime&page_size=1000").catch(() => ({ data: [] })),
-          api.get("matches/?status=CANCELED&ordering=-datetime&page_size=1000").catch(() => ({ data: [] })),
-        ]);
-        const getArr = (res) => (Array.isArray(res?.data) ? res.data : res?.data?.results) || [];
-        setUpcoming(getArr(rUpcoming));
-        setRecent(getArr(rRecent));
-        setSuspended(getArr(rSusp));
-        setPostponed(getArr(rPost));
-        setCanceled(getArr(rCanc));
-      } catch {}
-    }, 300000);
-    return () => clearInterval(id);
-  }, []);
-
+}, [liveMatches]);
+  
+  // ✅ Round auto
   useEffect(() => {
     if (defaultRoundSet.current) return;
     const def = pickDefaultRound({ live, upcoming, recent });

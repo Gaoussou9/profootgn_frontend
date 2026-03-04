@@ -22,6 +22,8 @@ import CompetitionClubs from "./pages/CompetitionClubs";
 import CompetitionMatchDetail from "./pages/CompetitionMatchDetail";
 import CompetitionPlayerDetail from "./pages/CompetitionPlayerDetail";
 
+import { LiveProvider } from "./context/LiveContext";
+
 function Layout() {
   const location = useLocation();
 
@@ -101,7 +103,9 @@ function Layout() {
 export default function App() {
   return (
     <BrowserRouter>
-      <Layout />
-    </BrowserRouter>
+  <LiveProvider>
+    <Layout />
+  </LiveProvider>
+</BrowserRouter>
   );
 }
