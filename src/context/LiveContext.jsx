@@ -10,13 +10,12 @@ export function LiveProvider({ children }) {
   const intervalRef = useRef(null);
   const fetchingRef = useRef(false);
 
-  // Vérifie si l'onglet est visible
   const isPageVisible = () => document.visibilityState === "visible";
 
-  // Vérifie si l'utilisateur est sur la page matchs
-  const isMatchesPage = () =>
-    window.location.pathname === "/" ||
-    window.location.pathname.includes("journees");
+  const isMatchesPage = () => {
+    const path = window.location.pathname;
+    return path === "/" || path.includes("journees");
+  };
 
   const stopPolling = () => {
     if (intervalRef.current) {
@@ -25,8 +24,20 @@ export function LiveProvider({ children }) {
     }
   };
 
+  const startPolling = (interval) => {
+    stopPolling();
+
+    intervalRef.current = setInterval(() => {
+      if (!isPageVisible()) return;
+      if (!isMatchesPage()) return;
+
+      fetchLive();
+    }, interval);
+  };
+
   const fetchLive = async () => {
     if (fetchingRef.current) return;
+
     fetchingRef.current = true;
 
     try {
@@ -38,8 +49,16 @@ export function LiveProvider({ children }) {
       setLiveMatches(data);
       setIsLiveActive(data.length > 0);
 
-      // Ajuste le polling selon live ou non
-      adjustPolling(data.length > 0);
+      // fréquence intelligente
+      let interval;
+
+      if (data.length > 0) {
+        interval = 15000; // match live
+      } else {
+        interval = 180000; // aucun match live
+      }
+
+      startPolling(interval);
 
     } catch (err) {
       console.error("Live fetch error:", err.message);
@@ -48,23 +67,10 @@ export function LiveProvider({ children }) {
     }
   };
 
-  const adjustPolling = (hasLive) => {
-    const interval = hasLive ? 30000 : 120000; // 30s si live, sinon 2 min
-
-    if (intervalRef.current) return;
-
-    intervalRef.current = setInterval(() => {
-      if (!isPageVisible()) return;
-      if (!isMatchesPage()) return;
-
-      fetchLive();
-    }, interval);
-  };
-
   useEffect(() => {
     if (!isMatchesPage()) return;
 
-    fetchLive(); // premier check
+    fetchLive();
 
     const handleVisibility = () => {
       if (document.visibilityState === "visible") {
