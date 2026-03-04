@@ -6,12 +6,29 @@ const LiveContext = createContext(null);
 export function LiveProvider({ children }) {
   const [liveMatches, setLiveMatches] = useState([]);
   const [isLiveActive, setIsLiveActive] = useState(false);
-  const intervalRef = useRef(null);
 
-  const isPageVisible = () =>
-    document.visibilityState === "visible";
+  const intervalRef = useRef(null);
+  const fetchingRef = useRef(false);
+
+  // Vérifie si l'onglet est visible
+  const isPageVisible = () => document.visibilityState === "visible";
+
+  // Vérifie si l'utilisateur est sur la page matchs
+  const isMatchesPage = () =>
+    window.location.pathname === "/" ||
+    window.location.pathname.includes("journees");
+
+  const stopPolling = () => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  };
 
   const fetchLive = async () => {
+    if (fetchingRef.current) return;
+    fetchingRef.current = true;
+
     try {
       const res = await api.get("matches/live/");
       const data = Array.isArray(res.data)
@@ -21,35 +38,45 @@ export function LiveProvider({ children }) {
       setLiveMatches(data);
       setIsLiveActive(data.length > 0);
 
-      // 🔥 Si aucun match live → stop polling
-      if (data.length === 0 && intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
+      // Ajuste le polling selon live ou non
+      adjustPolling(data.length > 0);
 
-      // 🔥 Si match live → démarrer polling si pas déjà actif
-      if (data.length > 0 && !intervalRef.current) {
-        startPolling();
-      }
     } catch (err) {
       console.error("Live fetch error:", err.message);
+    } finally {
+      fetchingRef.current = false;
     }
   };
 
-  const startPolling = () => {
+  const adjustPolling = (hasLive) => {
+    const interval = hasLive ? 30000 : 120000; // 30s si live, sinon 2 min
+
+    if (intervalRef.current) return;
+
     intervalRef.current = setInterval(() => {
       if (!isPageVisible()) return;
+      if (!isMatchesPage()) return;
+
       fetchLive();
-    }, 60000);
+    }, interval);
   };
 
   useEffect(() => {
-    fetchLive(); // premier check seulement
+    if (!isMatchesPage()) return;
+
+    fetchLive(); // premier check
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        fetchLive();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibility);
 
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
+      stopPolling();
+      document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, []);
 

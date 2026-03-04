@@ -128,7 +128,7 @@ function useServerSyncedMinute(match) {
     };
 
     computeMinuteNow();
-    tickRef.current = setInterval(computeMinuteNow, 1000);
+    tickRef.current = setInterval(computeMinuteNow, 15000);
 
     return () => {
       if (tickRef.current) {
@@ -414,11 +414,21 @@ setCanceled(getArr(rCanc));
   }, []);
 
   // ✅ Réagit au LiveProvider (plus de polling ici)
+const prevLiveRef = useRef([]);
+
 useEffect(() => {
   if (!liveMatches) return;
 
-  setLive(liveMatches);
+  const prev = prevLiveRef.current;
 
+  const same =
+    prev.length === liveMatches.length &&
+    prev.every((m, i) => m.id === liveMatches[i]?.id);
+
+  if (!same) {
+    setLive(liveMatches);
+    prevLiveRef.current = liveMatches;
+  }
 }, [liveMatches]);
   
   // ✅ Round auto
@@ -439,11 +449,12 @@ useEffect(() => {
   };
 
   const feed = useMemo(() => {
-    const map = new Map();
-    const push = (list) =>
-      (list || []).forEach((m) => {
-        if (!map.has(m.id)) map.set(m.id, m);
-      });
+    const map = new Map(); // Map pour éviter les doublons
+    const push = (list) => {
+  for (const m of list || []) {
+    if (!map.has(m.id)) map.set(m.id, m);
+  }
+};
     push(live);
     push(upcoming);
     push(postponed);
@@ -492,7 +503,7 @@ useEffect(() => {
       }
       return timeMs(b.datetime) - timeMs(a.datetime);
     });
-  }, [feedFiltered]);
+  }, [feedFiltered, live]);
 
   /* ---------- SPLASH OVERLAY PLEIN ÉCRAN (image de fond seule) ---------- */
   if (loading) {

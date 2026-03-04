@@ -35,7 +35,7 @@ function Layout() {
         <Routes>
 
           {/* ================= REDIRECT ================= */}
-          <Route path="/" element={<Navigate to="/journees" replace />} />
+          <Route path="/" element={<Home />} />
 
           {/* ================= GLOBAL ================= */}
           <Route path="/journees" element={<Home />} />
