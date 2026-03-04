@@ -193,30 +193,17 @@ export default function ClubDetail() {
   /* ---------- Charge les totaux club (buts, cartons, etc.) ---------- */
  useEffect(() => {
   let interval = null;
-  let stop = false;
 
-  const init = async () => {
-    await fetchTotals();
+  fetchTotals();
 
-    try {
-      const r = await api.get("matches/live/");
-      const liveMatches = Array.isArray(r.data)
-        ? r.data
-        : r.data?.results || [];
-
-      if (liveMatches.length > 0) {
-        interval = setInterval(fetchTotals, 60000); // 🔥 1 minute seulement si LIVE
-      }
-    } catch {}
-  };
-
-  init();
+  if (liveMatches.length > 0) {
+    interval = setInterval(fetchTotals, 60000);
+  }
 
   return () => {
-    stop = true;
     if (interval) clearInterval(interval);
   };
-}, [id]);
+}, [id, liveMatches]);
 
 
   /* ---------- Recalcule les passes décisives depuis /goals/ ---------- */
