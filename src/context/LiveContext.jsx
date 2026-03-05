@@ -67,25 +67,24 @@ export function LiveProvider({ children }) {
     }
   };
 
-  useEffect(() => {
+ useEffect(() => {
+
+  if (!isMatchesPage()) return;
+
+  fetchLive();
+
+  const interval = setInterval(() => {
+
+    if (!isPageVisible()) return;
     if (!isMatchesPage()) return;
 
     fetchLive();
 
-    const handleVisibility = () => {
-      if (document.visibilityState === "visible") {
-        fetchLive();
-      }
-    };
+  }, 30000); // 30s stable
 
-    document.addEventListener("visibilitychange", handleVisibility);
+  return () => clearInterval(interval);
 
-    return () => {
-      stopPolling();
-      document.removeEventListener("visibilitychange", handleVisibility);
-    };
-  }, []);
-
+}, []);
   return (
     <LiveContext.Provider value={{ liveMatches, isLiveActive }}>
       {children}
