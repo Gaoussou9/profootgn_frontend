@@ -255,11 +255,11 @@ export default function ClubPage() {
     </div>
 
     {/* Stats */}
-    <div className="text-center">{player.played ?? 0}</div>
-    <div className="text-center">{player.goals ?? 0}</div>
-    <div className="text-center">{player.assists ?? 0}</div>
-    <div className="text-center">{player.yellow_cards ?? 0}</div>
-    <div className="text-center">{player.red_cards ?? 0}</div>
+<div className="text-center">{player.matches_played ?? 0}</div>
+<div className="text-center">{player.goals ?? 0}</div>
+<div className="text-center">{player.assists ?? 0}</div>
+<div className="text-center">{player.yellow_cards ?? 0}</div>
+<div className="text-center">{player.red_cards ?? 0}</div>
 
   </button>
 ))}
