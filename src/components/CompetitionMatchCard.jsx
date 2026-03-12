@@ -5,41 +5,45 @@ import { useNavigate } from "react-router-dom";
    HOOK : Chrono synchronisé serveur
    ===================================================== */
 function useLiveMinute(match) {
-  const { status, started_at, elapsed_seconds } = match || {};
+
+  const { status, phase_start, phase_offset } = match || {};
   const [minute, setMinute] = useState(null);
 
   useEffect(() => {
+
     let interval = null;
     const st = (status || "").toUpperCase();
 
-    // Si pas LIVE → pas de chrono dynamique
     if (st !== "LIVE") {
       setMinute(null);
       return;
     }
 
-    const baseSeconds = Number(elapsed_seconds) || 0;
+    const baseSeconds = Number(phase_offset) || 0;
 
-    // Si started_at absent → on affiche juste la base
-    if (!started_at) {
+    if (!phase_start) {
       setMinute(Math.floor(baseSeconds / 60));
       return;
     }
 
-    const startMs = Date.parse(started_at);
+    const startMs = Date.parse(phase_start);
 
     const compute = () => {
+
       const diff = Math.floor((Date.now() - startMs) / 1000);
       const totalSeconds = baseSeconds + diff;
       const m = Math.floor(totalSeconds / 60);
+
       setMinute(m);
+
     };
 
     compute();
     interval = setInterval(compute, 1000);
 
     return () => clearInterval(interval);
-  }, [status, started_at, elapsed_seconds]);
+
+  }, [status, phase_start, phase_offset]);
 
   return minute;
 }
@@ -48,6 +52,7 @@ function useLiveMinute(match) {
    Formattage minute football pro
    ===================================================== */
 function formatMinute(status, minute) {
+
   const st = (status || "").toUpperCase();
 
   if (st === "HT") return "HT";
@@ -58,9 +63,12 @@ function formatMinute(status, minute) {
   // 1ère mi-temps
   if (minute < 45) return `${minute}'`;
 
-  // Temps additionnel 1ère MT
-  if (minute < 60)
-    return minute === 45 ? "45'" : `45+${minute - 45}'`;
+  // 45 exact
+  if (minute === 45) return "45'";
+
+  // Temps additionnel 1ère MT (45+)
+  if (minute > 45 && minute < 46)
+    return `45+${Math.floor((minute - 45) * 60)}'`;
 
   // 2e mi-temps
   if (minute < 90) return `${minute}'`;
@@ -68,11 +76,11 @@ function formatMinute(status, minute) {
   // Temps additionnel 2e MT
   return minute === 90 ? "90'" : `90+${minute - 90}'`;
 }
-
 /* =====================================================
    Composant Carte Match
    ===================================================== */
 export default function CompetitionMatchCard({ match, competitionId }) {
+
   const navigate = useNavigate();
 
   if (!match || !competitionId) return null;
@@ -110,6 +118,7 @@ export default function CompetitionMatchCard({ match, competitionId }) {
         ${isLive ? "ring-1 ring-red-200" : ""}
       `}
     >
+
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
 
         {/* HOME */}
@@ -150,15 +159,16 @@ export default function CompetitionMatchCard({ match, competitionId }) {
             className="w-7 h-7 object-contain shrink-0"
           />
         </div>
+
       </div>
 
       {/* FOOTER */}
       <div className="mt-3 flex justify-between items-center text-xs font-medium">
+
         <span className="text-gray-500">
           Journée {matchday}
         </span>
 
-        {/* BADGE STATUT */}
         {minuteLabel && (
           <div className="flex items-center gap-2 bg-red-50 text-red-600 px-3 py-1 rounded-full text-[11px] font-semibold">
             {isLive && (
@@ -179,7 +189,9 @@ export default function CompetitionMatchCard({ match, competitionId }) {
             Fin
           </span>
         )}
+
       </div>
+
     </div>
   );
 }

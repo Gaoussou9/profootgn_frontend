@@ -8,7 +8,11 @@ const Badge = ({type, children})=>{
     FT: "bg-emerald-100 text-emerald-700 ring-emerald-200",
     FINAL: "bg-emerald-100 text-emerald-700 ring-emerald-200",
   }[(type||"").toUpperCase()];
-  return <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full ring-1 ${m||"bg-slate-100 text-slate-700 ring-slate-200"}`}>{children}</span>;
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full ring-1 ${m||"bg-slate-100 text-slate-700 ring-slate-200"}`}>
+      {children}
+    </span>
+  );
 };
 
 const Logo = ({src, alt, size="w-7 h-7 sm:w-9 sm:h-9"})=>(
@@ -20,51 +24,82 @@ const Logo = ({src, alt, size="w-7 h-7 sm:w-9 sm:h-9"})=>(
   />
 );
 
+/* format minute comme Home.jsx */
+function formatMinute(status, minute){
+
+  const st = (status || "").toUpperCase();
+
+  if(st === "HT") return "HT";
+  if(st === "FT" || st === "FINAL") return "FT";
+
+  if(st !== "LIVE") return status;
+
+  if(minute == null) return "LIVE";
+
+  if(minute < 45) return `LIVE • ${minute}'`;
+
+  if(minute < 50) return `LIVE • 45+${minute-45}'`;
+
+  if(minute < 90) return `LIVE • ${minute}'`;
+
+  return `LIVE • 90+${minute-90}'`;
+}
+
 export default function MatchCard({
   id, roundName, kickoffISO,
   homeName, homeLogo, awayName, awayLogo,
   homeScore, awayScore, status, liveMinute
 }){
-  const statusLabel = (status||"").toUpperCase() === "LIVE"
-    ? `LIVE • ${liveMinute??"•"}’`
-    : (status || "—");
+
+  const statusLabel = formatMinute(status, liveMinute);
 
   return (
     <Link to={`/match/${id}`} className="block card p-3 sm:p-4 hover:shadow-md transition">
+
       {/* Header */}
       <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
         <span className="font-medium">{roundName || "Journée"}</span>
         <Badge type={status}>{statusLabel}</Badge>
       </div>
 
-      {/* Corps: layout mobile-first */}
+      {/* Corps */}
       <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2 sm:gap-3">
+
         {/* Home */}
         <div className="flex items-center gap-2 min-w-0">
           <Logo src={homeLogo} alt={homeName}/>
-          <span className="truncate text-sm sm:text-base font-medium">{homeName}</span>
+          <span className="truncate text-sm sm:text-base font-medium">
+            {homeName}
+          </span>
         </div>
 
         {/* Score */}
         <div className="justify-self-center text-center">
-          <span className="text-base sm:text-lg font-semibold tabular-nums">{homeScore ?? 0}</span>
+          <span className="text-base sm:text-lg font-semibold tabular-nums">
+            {homeScore ?? 0}
+          </span>
           <span className="mx-1 text-slate-400">–</span>
-          <span className="text-base sm:text-lg font-semibold tabular-nums">{awayScore ?? 0}</span>
+          <span className="text-base sm:text-lg font-semibold tabular-nums">
+            {awayScore ?? 0}
+          </span>
         </div>
 
         {/* Away */}
         <div className="flex items-center justify-end gap-2 min-w-0">
-          <span className="truncate text-sm sm:text-base font-medium text-right">{awayName}</span>
+          <span className="truncate text-sm sm:text-base font-medium text-right">
+            {awayName}
+          </span>
           <Logo src={awayLogo} alt={awayName}/>
         </div>
       </div>
 
-      {/* Footer: date (masquée sur très petit écran si tu veux) */}
+      {/* Date */}
       {kickoffISO && (
         <div className="mt-2 text-xs text-slate-500">
           {new Date(kickoffISO).toLocaleString()}
         </div>
       )}
+
     </Link>
   );
 }
