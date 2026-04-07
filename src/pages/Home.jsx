@@ -4,7 +4,7 @@ import api from "../api/client";
 import SilkcoatAd from "../components/SilkcoatAd";
 
 import { useLive } from "../context/LiveContext";
-
+import AdsZone from "../components/Ads/AdsZone";
 /* ---------- Helpers UI ---------- */
 
 const Logo = ({ src, alt, size = "w-9 h-9 sm:w-10 sm:h-10" }) => (
@@ -577,27 +577,35 @@ useEffect(() => {
   <h1 className="text-2xl font-bold">LIGUE 1 GUICOPRES</h1>
 </header>
 
-{/* --- Silkcoat Ad (place here) --- */}
+{/* --- Ads dynamique --- */}
 <div className="mt-4">
-  <SilkcoatAd
-  adId="silkcoat-home-1"
-  imageUrl={`/media/ads/silkcoat-banner.jpg?v=1.0.3`} // DEVELOP only
-  videoUrl="https://www.youtube.com/embed/FuoFRQKtlcs?list=PLYBN7ewOsvtzdRpsUBIm8AOjm02_herqa&t=125"
-  linkUrl="https://silkcoat.com/produits"
-/>
+  <AdsZone page="home" position="top" />
 </div>
 
 
         <MatchdayBar selected={round} onChange={handleRoundChange} max={26} />
 
         <ul className="grid gap-4">
-          {feedSorted.map((m) => (
-            <li key={m.id}>
-              <MatchCard m={m} />
-            </li>
-          ))}
-        </ul>
-      </section>
+  {feedSorted.map((m, index) => (
+    <li key={m.id}>
+      <MatchCard m={m} />
+
+      {/* 🟡 PUB MIDDLE */}
+      {index === 2 && (
+        <div className="mt-4">
+          <AdsZone page="home" position="middle" />
+        </div>
+      )}
+
+      {/* ⚫ PUB BOTTOM */}
+      {index === 5 && (
+        <div className="mt-4">
+          <AdsZone page="home" position="bottom" />
+        </div>
+      )}
+    </li>
+  ))}
+</ul>      </section>
     </div>
   );
 }
