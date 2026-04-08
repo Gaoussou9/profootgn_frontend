@@ -1,4 +1,4 @@
-const BASE_URL = "http://localhost:8000";
+const API_URL = import.meta.env.VITE_API_URL + "/api/ads";
 
 export const fetchAds = async (params = {}) => {
   const cleanParams = Object.fromEntries(
