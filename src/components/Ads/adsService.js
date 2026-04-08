@@ -1,13 +1,18 @@
-const API_URL = import.meta.env.VITE_API_URL + "/api/ads";
+const BASE_URL =
+  import.meta.env.VITE_API_URL || "http://localhost:8000";
 
+// 🔥 FETCH ADS
 export const fetchAds = async (params = {}) => {
   const cleanParams = Object.fromEntries(
-  Object.entries(params).filter(
-    ([_, value]) => value !== undefined && value !== null
-  )
-);
+    Object.entries(params).filter(
+      ([_, value]) =>
+        value !== undefined &&
+        value !== null &&
+        value !== "undefined"
+    )
+  );
 
-const query = new URLSearchParams(cleanParams).toString();
+  const query = new URLSearchParams(cleanParams).toString();
 
   const res = await fetch(`${BASE_URL}/api/ads/?${query}`);
 
@@ -18,6 +23,7 @@ const query = new URLSearchParams(cleanParams).toString();
   return res.json();
 };
 
+// 📊 IMPRESSION
 export const logImpression = async (ad_id) => {
   try {
     await fetch(`${BASE_URL}/api/ads/impression/`, {
@@ -32,6 +38,7 @@ export const logImpression = async (ad_id) => {
   }
 };
 
+// 🖱️ CLICK
 export const logClick = async (ad_id) => {
   try {
     await fetch(`${BASE_URL}/api/ads/click/`, {
