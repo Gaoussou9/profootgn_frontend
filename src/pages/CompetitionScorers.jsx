@@ -21,13 +21,9 @@ export default function CompetitionScorers() {
           `${API}/api/competitions/${competitionId}/top-scorers/`
         );
 
-        // 🔥 protège contre erreur HTML
-        if (!res.ok) {
-          throw new Error("API error");
-        }
+        if (!res.ok) throw new Error("API error");
 
         const data = await res.json();
-
         console.log("DATA:", data);
 
         setScorers(data.scorers || []);
@@ -48,8 +44,12 @@ export default function CompetitionScorers() {
       <div className="flex justify-between text-sm text-gray-500 mb-3 px-2">
         <span>#</span>
         <span className="flex-1 ml-4">Joueur</span>
-        <span className="w-10 text-center">MJ</span>
-        <span className="w-10 text-center">⚽</span>
+
+        <div className="flex gap-4">
+          <span className="w-8 text-center">⚽</span>
+          <span className="w-8 text-center">MJ</span>
+          <span className="w-10 text-center">R</span>
+        </div>
       </div>
 
       {loading ? (
@@ -94,15 +94,35 @@ export default function CompetitionScorers() {
               </div>
             </div>
 
-            {/* MATCHES */}
-            <span className="w-10 text-center text-sm text-gray-600">
-              {p.matches ?? "-"}
-            </span>
+            {/* STATS */}
+            <div className="flex items-center gap-4 text-sm">
 
-            {/* GOALS */}
-            <span className="w-10 text-center font-bold text-green-600">
-              {p.goals}
-            </span>
+              {/* GOALS */}
+              <span className="font-bold text-green-600 w-8 text-center">
+                {p.goals}
+              </span>
+
+              {/* MATCHES */}
+              <span className="text-gray-600 w-8 text-center">
+                {p.matches ?? "-"}
+              </span>
+
+              {/* RATIO */}
+<span
+  className={`text-xs w-10 text-center ${
+    p.matches > 0 && p.goals / p.matches > 0.7
+      ? "text-green-500"
+      : p.matches > 0 && p.goals / p.matches > 0.3
+      ? "text-orange-400"
+      : "text-gray-400"
+  }`}
+>
+  {p.matches > 0
+    ? (p.goals / p.matches).toFixed(2)
+    : "-"}
+</span>
+
+            </div>
           </div>
         ))
       )}
