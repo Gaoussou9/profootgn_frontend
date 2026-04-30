@@ -11,7 +11,8 @@ export default function CompetitionScorers() {
 
     const fetchScorers = async () => {
       try {
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/competitions/${competitionId}/top-scorers/`
+        const res = await fetch(
+          `http://127.0.0.1:8000/api/competitions/${competitionId}/top-scorers/`
         );
         const data = await res.json();
         setScorers(data.scorers || []);
