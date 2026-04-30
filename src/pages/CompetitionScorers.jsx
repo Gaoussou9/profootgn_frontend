@@ -79,13 +79,17 @@ export default function CompetitionScorers() {
 
             {/* PLAYER */}
             <div className="flex items-center gap-2 flex-1 ml-2">
-              {p.club?.logo && (
-                <img
-                  src={p.club.logo}
-                  alt=""
-                  className="w-6 h-6 rounded-full object-cover"
-                />
-              )}
+              {p.photo ? (
+  <img
+    src={p.photo}
+    alt={p.name}
+    className="w-8 h-8 rounded-full object-cover border"
+  />
+) : (
+  <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs text-gray-500">
+    {p.name.charAt(0)}
+  </div>
+)}
               <div>
                 <div className="font-medium text-sm">{p.name}</div>
                 <div className="text-xs text-gray-400">
