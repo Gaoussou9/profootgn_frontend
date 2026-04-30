@@ -6,18 +6,33 @@ export default function CompetitionScorers() {
   const [scorers, setScorers] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // 🔥 AUTO SWITCH LOCAL / PROD
+  const API =
+    window.location.hostname === "localhost"
+      ? "http://127.0.0.1:8000"
+      : "https://api.kanousport.com";
+
   useEffect(() => {
     if (!competitionId) return;
 
     const fetchScorers = async () => {
       try {
         const res = await fetch(
-          `http://127.0.0.1:8000/api/competitions/${competitionId}/top-scorers/`
+          `${API}/api/competitions/${competitionId}/top-scorers/`
         );
+
+        // 🔥 protège contre erreur HTML
+        if (!res.ok) {
+          throw new Error("API error");
+        }
+
         const data = await res.json();
+
+        console.log("DATA:", data);
+
         setScorers(data.scorers || []);
       } catch (err) {
-        console.error(err);
+        console.error("Erreur API:", err);
       } finally {
         setLoading(false);
       }
@@ -28,7 +43,7 @@ export default function CompetitionScorers() {
 
   return (
     <div className="bg-white rounded-2xl p-4 shadow-md">
-      
+
       {/* HEADER */}
       <div className="flex justify-between text-sm text-gray-500 mb-3 px-2">
         <span>#</span>
@@ -48,12 +63,17 @@ export default function CompetitionScorers() {
             className="flex items-center justify-between py-2 px-2 border-b last:border-none hover:bg-gray-50 rounded-lg transition"
           >
             {/* RANK */}
-            <span className={`font-bold w-6 ${
-              i === 0 ? "text-yellow-500" :
-              i === 1 ? "text-gray-400" :
-              i === 2 ? "text-orange-400" :
-              "text-gray-600"
-            }`}>
+            <span
+              className={`font-bold w-6 ${
+                i === 0
+                  ? "text-yellow-500"
+                  : i === 1
+                  ? "text-gray-400"
+                  : i === 2
+                  ? "text-orange-400"
+                  : "text-gray-600"
+              }`}
+            >
               {i + 1}
             </span>
 
