@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from "react-router-dom";
 
 import Home from "./pages/Home";
 import Standings from "./pages/Standings";
@@ -26,69 +26,12 @@ import { LiveProvider } from "./context/LiveContext";
 
 function Layout() {
   const location = useLocation();
-
   const isCompetitionPage = location.pathname.startsWith("/competitions/");
 
   return (
     <>
-      <main className="px-4 sm:px-6 md:px-8 py-4 max-w-6xl mx-auto pb-28">
-        <Routes>
-
-          {/* ================= REDIRECT ================= */}
-          <Route path="/" element={<Home />} />
-
-          {/* ================= GLOBAL ================= */}
-          <Route path="/journees" element={<Home />} />
-          <Route path="/classement" element={<Standings />} />
-          <Route path="/buteurs" element={<TopScorers />} />
-          <Route path="/passeurs" element={<AssistsLeaders />} />
-          <Route path="/clubs" element={<Clubs />} />
-          <Route path="/clubs/:id" element={<ClubDetail />} />
-          <Route path="/match/:id" element={<MatchDetail />} />
-
-          {/* ================= COMPÉTITIONS ================= */}
-          <Route path="/competitions" element={<CompetitionsList />} />
-
-          {/* ⚠️ ROUTES SPÉCIFIQUES D'ABORD */}
-          <Route
-            path="/competitions/:competitionId/match/:matchId"
-            element={<CompetitionMatchDetail />}
-          />
-
-          <Route
-            path="/competitions/:competitionId/clubs/:clubId"
-            element={<ClubPage />}
-          />
-
-          <Route
-            path="/competitions/:competitionId/classement"
-            element={<CompetitionStandings />}
-          />
-
-          <Route
-            path="/competitions/:competitionId/buteurs"
-            element={<CompetitionScorers />}
-          />
-
-          <Route
-            path="/competitions/:competitionId/clubs"
-            element={<CompetitionClubs />}
-          />
-
-          {/* ⚠️ ROUTE GÉNÉRIQUE EN DERNIER */}
-          <Route
-            path="/competitions/:competitionId"
-            element={<CompetitionPage />}
-          />
-           <Route 
-  path="/competitions/:competitionId/clubs/:clubId/players/:playerId"
-  element={<CompetitionPlayerDetail />}
-/>
-
-          {/* ================= 404 ================= */}
-          <Route path="*" element={<Navigate to="/journees" replace />} />
-
-        </Routes>
+      <main className="px-4 py-4 max-w-6xl mx-auto pb-28">
+        <Outlet /> {/* 🔥 IMPORTANT */}
       </main>
 
       <ClubSheetHost />
@@ -103,9 +46,39 @@ function Layout() {
 export default function App() {
   return (
     <BrowserRouter>
-  <LiveProvider>
-    <Layout />
-  </LiveProvider>
-</BrowserRouter>
+      <LiveProvider>
+        <Routes>
+
+          <Route element={<Layout />}>
+
+            {/* GLOBAL */}
+            <Route path="/" element={<Home />} />
+            <Route path="/journees" element={<Home />} />
+            <Route path="/classement" element={<Standings />} />
+            <Route path="/buteurs" element={<TopScorers />} />
+            <Route path="/passeurs" element={<AssistsLeaders />} />
+            <Route path="/clubs" element={<Clubs />} />
+            <Route path="/clubs/:id" element={<ClubDetail />} />
+            <Route path="/match/:id" element={<MatchDetail />} />
+
+            {/* COMPÉTITIONS */}
+            <Route path="/competitions" element={<CompetitionsList />} />
+
+            <Route path="/competitions/:competitionId/match/:matchId" element={<CompetitionMatchDetail />} />
+            <Route path="/competitions/:competitionId/clubs/:clubId" element={<ClubPage />} />
+            <Route path="/competitions/:competitionId/classement" element={<CompetitionStandings />} />
+            <Route path="/competitions/:competitionId/buteurs" element={<CompetitionScorers />} />
+            <Route path="/competitions/:competitionId/clubs" element={<CompetitionClubs />} />
+            <Route path="/competitions/:competitionId/clubs/:clubId/players/:playerId" element={<CompetitionPlayerDetail />} />
+            <Route path="/competitions/:competitionId" element={<CompetitionPage />} />
+
+            {/* 404 */}
+            <Route path="*" element={<Navigate to="/journees" replace />} />
+
+          </Route>
+
+        </Routes>
+      </LiveProvider>
+    </BrowserRouter>
   );
 }
