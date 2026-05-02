@@ -1,8 +1,10 @@
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 
 export default function CompetitionScorers() {
   const { competitionId } = useParams();
+  const navigate = useNavigate(); // 🔥 AJOUT
+
   const [scorers, setScorers] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -24,8 +26,6 @@ export default function CompetitionScorers() {
         if (!res.ok) throw new Error("API error");
 
         const data = await res.json();
-        console.log("DATA:", data);
-
         setScorers(data.scorers || []);
       } catch (err) {
         console.error("Erreur API:", err);
@@ -60,7 +60,12 @@ export default function CompetitionScorers() {
         scorers.map((p, i) => (
           <div
             key={p.id}
-            className="flex items-center justify-between py-2 px-2 border-b last:border-none hover:bg-gray-50 rounded-lg transition"
+            onClick={() =>
+              navigate(
+                `/competitions/${competitionId}/clubs/${p.club?.id}/players/${p.id}`
+              )
+            }
+            className="flex items-center justify-between py-2 px-2 border-b last:border-none hover:bg-gray-100 active:scale-[0.98] cursor-pointer rounded-lg transition"
           >
             {/* RANK */}
             <span
@@ -80,16 +85,17 @@ export default function CompetitionScorers() {
             {/* PLAYER */}
             <div className="flex items-center gap-2 flex-1 ml-2">
               {p.photo ? (
-  <img
-    src={p.photo}
-    alt={p.name}
-    className="w-8 h-8 rounded-full object-cover border"
-  />
-) : (
-  <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs text-gray-500">
-    {p.name.charAt(0)}
-  </div>
-)}
+                <img
+                  src={p.photo}
+                  alt={p.name}
+                  className="w-8 h-8 rounded-full object-cover border"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs text-gray-500">
+                  {p.name.charAt(0)}
+                </div>
+              )}
+
               <div>
                 <div className="font-medium text-sm">{p.name}</div>
                 <div className="text-xs text-gray-400">
@@ -112,19 +118,19 @@ export default function CompetitionScorers() {
               </span>
 
               {/* RATIO */}
-<span
-  className={`text-xs w-10 text-center ${
-    p.matches > 0 && p.goals / p.matches > 0.7
-      ? "text-green-500"
-      : p.matches > 0 && p.goals / p.matches > 0.3
-      ? "text-orange-400"
-      : "text-gray-400"
-  }`}
->
-  {p.matches > 0
-    ? (p.goals / p.matches).toFixed(2)
-    : "-"}
-</span>
+              <span
+                className={`text-xs w-10 text-center ${
+                  p.matches > 0 && p.goals / p.matches > 0.7
+                    ? "text-green-500"
+                    : p.matches > 0 && p.goals / p.matches > 0.3
+                    ? "text-orange-400"
+                    : "text-gray-400"
+                }`}
+              >
+                {p.matches > 0
+                  ? (p.goals / p.matches).toFixed(2)
+                  : "-"}
+              </span>
 
             </div>
           </div>
