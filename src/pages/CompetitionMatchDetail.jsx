@@ -1,135 +1,345 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
+import whistleImg from "../assets/whistle.webp";
+import bootImg from "../assets/crampon.png";
 
 const API_BASE =
   import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
 
 export default function CompetitionMatchDetail() {
   const { competitionId, matchId } = useParams();
-
   const [match, setMatch] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (!competitionId || !matchId) return;
-
-    const controller = new AbortController();
-
-    async function fetchMatch() {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const response = await fetch(
-          `${API_BASE}/api/competitions/${competitionId}/matches/${matchId}/`,
-          { signal: controller.signal }
-        );
-
-        if (!response.ok) {
-          throw new Error("Match introuvable");
-        }
-
-        const data = await response.json();
-        setMatch(data);
-      } catch (err) {
-        if (err.name !== "AbortError") {
-          setError(err.message);
-        }
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchMatch();
-    return () => controller.abort();
+    fetch(`${API_BASE}/api/competitions/${competitionId}/matches/${matchId}/`)
+      .then((res) => res.json())
+      .then((data) => setMatch(data));
   }, [competitionId, matchId]);
-
-  if (loading) {
-    return (
-      <div className="text-center py-10 animate-pulse">
-        Chargement du match...
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="text-center text-red-500 py-10">
-        ❌ {error}
-      </div>
-    );
-  }
 
   if (!match) {
     return (
-      <div className="text-center py-10">
-        Aucun détail disponible
-      </div>
+      <p className="text-center py-10">
+        Chargement...
+      </p>
     );
   }
 
-  return (
-    <div className="max-w-xl mx-auto bg-white rounded-2xl shadow p-6 space-y-6">
+  const isHomeEvent = (event) =>
+    Number(event.team) === Number(match.home_team.id);
 
-      <div className="text-center space-y-3">
+  return (
+    <div className="max-w-md mx-auto bg-gray-100 min-h-screen">
+
+      {/* HEADER */}
+      <div className="bg-green-600 text-white p-4 text-center">
 
         <div className="flex justify-between items-center">
-          <div className="text-center flex-1">
+
+          {/* HOME */}
+          <div className="text-center">
             <img
-              src={match.home_team?.logo}
-              alt=""
-              className="w-14 h-14 mx-auto object-contain"
+              src={match.home_team.logo}
+              className="w-12 h-12 mx-auto object-contain"
             />
-            <p className="font-semibold mt-2">
-              {match.home_team?.name}
-            </p>
+
+            <p>{match.home_team.name}</p>
           </div>
 
-          <div className="text-3xl font-extrabold">
-            {match.home_score ?? 0} - {match.away_score ?? 0}
+          {/* SCORE */}
+          <div className="text-2xl font-bold">
+            {match.home_score} - {match.away_score}
+
+            <div className="text-sm">
+              {match.status_label}
+            </div>
           </div>
 
-          <div className="text-center flex-1">
+          {/* AWAY */}
+          <div className="text-center">
             <img
-              src={match.away_team?.logo}
-              alt=""
-              className="w-14 h-14 mx-auto object-contain"
+              src={match.away_team.logo}
+              className="w-12 h-12 mx-auto object-contain"
             />
-            <p className="font-semibold mt-2">
-              {match.away_team?.name}
-            </p>
-          </div>
-        </div>
 
-        <div className="text-sm text-gray-500">
-          Journée {match.matchday} • {match.status_label}
+            <p>{match.away_team.name}</p>
+          </div>
+
         </div>
       </div>
 
-      <div className="border-t pt-4">
-        {(!match.goals || match.goals.length === 0) &&
-        (!match.cards || match.cards.length === 0) ? (
-          <div className="text-center text-gray-500 text-sm">
-            Aucun événement disponible
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {match.goals?.map((goal) => (
-              <div key={goal.id} className="text-sm">
-                ⚽ {goal.player_name} ({goal.minute}')
-              </div>
-            ))}
+      {/* EVENTS */}
+      <div className="p-4 space-y-8">
 
-            {match.cards?.map((card) => (
-              <div key={card.id} className="text-sm">
-                🟨 {card.player_name} ({card.minute}')
-              </div>
-            ))}
-          </div>
-        )}
+        {/* ===================== */}
+        {/* ⚽ BUTS */}
+        {/* ===================== */}
+        <div>
+
+          <h3 className="text-center font-bold text-gray-700 mb-4">
+            BUTS
+          </h3>
+
+          {[...match.goals]
+            .sort((a, b) => a.minute - b.minute)
+            .map((g) => {
+
+              const isHome = isHomeEvent(g);
+
+              return (
+                <div
+                  key={g.id}
+                  className="flex items-center mb-4"
+                >
+
+                  {/* HOME */}
+                  <div className="w-5/12">
+
+                    {isHome && (
+
+                      <Link
+                        to={`/competitions/${competitionId}/clubs/${g.club_id}/players/${g.player_id}`}
+                        className="flex items-center gap-3 hover:opacity-80"
+                      >
+
+                        {/* PHOTO */}
+                        <img
+                          src={g.player_photo || "/default.png"}
+                          className="w-9 h-9 rounded-full object-cover"
+                        />
+
+                        {/* TEXT */}
+                        <div>
+
+                          {/* PLAYER */}
+                          <p className="text-sm font-semibold whitespace-nowrap">
+                            {g.player_name} ⚽
+                          </p>
+
+                          {/* ASSIST */}
+                          {g.assist_name && (
+                            <p className="text-xs text-gray-500 flex items-center gap-1 whitespace-nowrap">
+
+                              <span>{g.assist_name}</span>
+
+                              <img
+                                src={bootImg}
+                                alt="boot"
+                                className="w-4 h-4 object-contain"
+                              />
+
+                            </p>
+                          )}
+
+                          {/* GOAL TYPE */}
+                          {g.goal_type !== "normal" && (
+                            <p className="text-xs text-orange-600 font-semibold">
+                              {g.goal_type_label}
+                            </p>
+                          )}
+
+                        </div>
+
+                      </Link>
+
+                    )}
+
+                  </div>
+
+                  {/* MINUTE */}
+                  <div className="w-2/12 text-center text-green-600 font-bold">
+                    {g.minute}'
+                  </div>
+
+                  {/* AWAY */}
+                  <div className="w-5/12">
+
+                    {!isHome && (
+
+                      <Link
+                        to={`/competitions/${competitionId}/clubs/${g.club_id}/players/${g.player_id}`}
+                        className="flex items-center justify-end gap-3 hover:opacity-80"
+                      >
+
+                        {/* PHOTO */}
+                        <img
+                          src={g.player_photo || "/default.png"}
+                          className="w-9 h-9 rounded-full object-cover"
+                        />
+
+                        {/* TEXT */}
+                        <div className="text-right">
+
+                          {/* PLAYER */}
+                          <p className="text-sm font-semibold whitespace-nowrap">
+                            {g.player_name} ⚽
+                          </p>
+
+                          {/* ASSIST */}
+                          {g.assist_name && (
+                            <p className="text-xs text-gray-500 flex items-center justify-end gap-1 whitespace-nowrap">
+
+                              <span>{g.assist_name}</span>
+
+                              <img
+                                src={bootImg}
+                                alt="boot"
+                                className="w-4 h-4 object-contain"
+                              />
+
+                            </p>
+                          )}
+
+                          {/* GOAL TYPE */}
+                          {g.goal_type !== "normal" && (
+                            <p className="text-xs text-orange-600 font-semibold">
+                              {g.goal_type_label}
+                            </p>
+                          )}
+
+                        </div>
+
+                      </Link>
+
+                    )}
+
+                  </div>
+
+                </div>
+              );
+            })}
+        </div>
+
+        {/* ===================== */}
+        {/* 🟨 CARTONS */}
+        {/* ===================== */}
+        <div>
+
+          <h3 className="text-center font-bold text-gray-700 mb-4">
+            CARTONS
+          </h3>
+
+          {[...match.cards]
+            .sort((a, b) => a.minute - b.minute)
+            .map((c) => {
+
+              const isHome = isHomeEvent(c);
+
+              const cardIcon =
+                c.color === "red" ? "🟥" : "🟨";
+
+              return (
+                <div
+                  key={c.id}
+                  className="flex items-center mb-4"
+                >
+
+                  {/* HOME */}
+                  <div className="w-5/12">
+
+                    {isHome && (
+
+                      <Link
+                        to={`/competitions/${competitionId}/clubs/${c.club_id}/players/${c.player_id}`}
+                        className="flex items-center gap-3 hover:opacity-80"
+                      >
+
+                        {/* PHOTO */}
+                        <img
+                          src={c.player_photo || "/default.png"}
+                          className="w-9 h-9 rounded-full object-cover"
+                        />
+
+                        {/* TEXT */}
+                        <div>
+
+                          {/* PLAYER */}
+                          <p className="text-sm font-semibold flex items-center gap-2 whitespace-nowrap">
+                            {c.player_name}
+
+                            <span>{cardIcon}</span>
+                          </p>
+
+                          {/* REASON */}
+                          <p className="text-xs text-gray-500 flex items-center gap-1 whitespace-nowrap">
+
+                            <span>{c.reason_label}</span>
+
+                            <img
+                              src={whistleImg}
+                              alt="whistle"
+                              className="w-5 h-5 object-contain"
+                            />
+
+                          </p>
+
+                        </div>
+
+                      </Link>
+
+                    )}
+
+                  </div>
+
+                  {/* MINUTE */}
+                  <div className="w-2/12 text-center text-green-600 font-bold">
+                    {c.minute}'
+                  </div>
+
+                  {/* AWAY */}
+                  <div className="w-5/12">
+
+                    {!isHome && (
+
+                      <Link
+                        to={`/competitions/${competitionId}/clubs/${c.club_id}/players/${c.player_id}`}
+                        className="flex items-center justify-end gap-3 hover:opacity-80"
+                      >
+
+                        {/* PHOTO */}
+                        <img
+                          src={c.player_photo || "/default.png"}
+                          className="w-9 h-9 rounded-full object-cover"
+                        />
+
+                        {/* TEXT */}
+                        <div className="text-right">
+
+                          {/* PLAYER */}
+                          <p className="text-sm font-semibold flex items-center justify-end gap-2 whitespace-nowrap">
+
+                            {c.player_name}
+
+                            <span>{cardIcon}</span>
+
+                          </p>
+
+                          {/* REASON */}
+                          <p className="text-xs text-gray-500 flex items-center justify-end gap-1 whitespace-nowrap">
+
+                            <span>{c.reason_label}</span>
+
+                            <img
+                              src={whistleImg}
+                              alt="whistle"
+                              className="w-5 h-5 object-contain"
+                            />
+
+                          </p>
+
+                        </div>
+
+                      </Link>
+
+                    )}
+
+                  </div>
+
+                </div>
+              );
+            })}
+        </div>
+
       </div>
-
     </div>
   );
 }
