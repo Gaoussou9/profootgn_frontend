@@ -88,7 +88,7 @@ export default function CompetitionMatchDetail() {
               return (
                 <div
                   key={g.id}
-                  className="flex items-center mb-4"
+                  className="flex items-center mb-3"
                 >
 
                   {/* HOME */}
@@ -98,13 +98,13 @@ export default function CompetitionMatchDetail() {
 
                       <Link
                         to={`/competitions/${competitionId}/clubs/${g.club_id}/players/${g.player_id}`}
-                        className="flex items-center gap-3 hover:opacity-80"
+                        className="flex items-center gap-0,3 hover:opacity-80"
                       >
 
                         {/* PHOTO */}
                         <img
                           src={g.player_photo || "/default.png"}
-                          className="w-9 h-9 rounded-full object-cover"
+                          className="w-8 h-8 rounded-full object-cover"
                         />
 
                         {/* TEXT */}
@@ -117,7 +117,7 @@ export default function CompetitionMatchDetail() {
 
                           {/* ASSIST */}
                           {g.assist_name && (
-                            <p className="text-xs text-gray-500 flex items-center gap-1 whitespace-nowrap">
+                            <p className="text-xs text-gray-500 flex items-center gap-0,5 whitespace-nowrap">
 
                               <span>{g.assist_name}</span>
 
@@ -157,13 +157,13 @@ export default function CompetitionMatchDetail() {
 
                       <Link
                         to={`/competitions/${competitionId}/clubs/${g.club_id}/players/${g.player_id}`}
-                        className="flex items-center justify-end gap-3 hover:opacity-80"
+                        className="flex items-center justify-end gap-0,5 hover:opacity-80"
                       >
 
                         {/* PHOTO */}
                         <img
                           src={g.player_photo || "/default.png"}
-                          className="w-9 h-9 rounded-full object-cover"
+                          className="w-8 h-8 rounded-full object-cover"
                         />
 
                         {/* TEXT */}
@@ -240,7 +240,7 @@ export default function CompetitionMatchDetail() {
 
                       <Link
                         to={`/competitions/${competitionId}/clubs/${c.club_id}/players/${c.player_id}`}
-                        className="flex items-center gap-3 hover:opacity-80"
+                        className="flex items-center gap-0,5 hover:opacity-80"
                       >
 
                         {/* PHOTO */}
@@ -253,7 +253,7 @@ export default function CompetitionMatchDetail() {
                         <div>
 
                           {/* PLAYER */}
-                          <p className="text-sm font-semibold flex items-center gap-2 whitespace-nowrap">
+                          <p className="text-sm font-semibold flex items-center gap-0,5 whitespace-nowrap">
                             {c.player_name}
 
                             <span>{cardIcon}</span>
@@ -292,7 +292,7 @@ export default function CompetitionMatchDetail() {
 
                       <Link
                         to={`/competitions/${competitionId}/clubs/${c.club_id}/players/${c.player_id}`}
-                        className="flex items-center justify-end gap-3 hover:opacity-80"
+                        className="flex items-center justify-end gap-0,5 hover:opacity-80"
                       >
 
                         {/* PHOTO */}
@@ -305,7 +305,7 @@ export default function CompetitionMatchDetail() {
                         <div className="text-right">
 
                           {/* PLAYER */}
-                          <p className="text-sm font-semibold flex items-center justify-end gap-2 whitespace-nowrap">
+                          <p className="text-sm font-semibold flex items-center justify-end gap-1 whitespace-nowrap">
 
                             {c.player_name}
 
