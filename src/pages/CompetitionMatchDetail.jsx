@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
+
 import whistleImg from "../assets/whistle.webp";
 import bootImg from "../assets/crampon.png";
 
@@ -7,13 +8,19 @@ const API_BASE =
   import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
 
 export default function CompetitionMatchDetail() {
+
   const { competitionId, matchId } = useParams();
+
   const [match, setMatch] = useState(null);
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/competitions/${competitionId}/matches/${matchId}/`)
+
+    fetch(
+      `${API_BASE}/api/competitions/${competitionId}/matches/${matchId}/`
+    )
       .then((res) => res.json())
       .then((data) => setMatch(data));
+
   }, [competitionId, matchId]);
 
   if (!match) {
@@ -27,319 +34,621 @@ export default function CompetitionMatchDetail() {
   const isHomeEvent = (event) =>
     Number(event.team) === Number(match.home_team.id);
 
+  // =========================
+  // ABRÉGER NOMS
+  // =========================
+
+  function abbreviateName(name) {
+
+    if (!name) return "";
+
+    const parts = name
+      .trim()
+      .split(" ")
+      .filter(Boolean);
+
+    if (parts.length === 1) {
+      return parts[0];
+    }
+
+    if (parts.length === 2) {
+      return `${parts[0][0]}. ${parts[1]}`;
+    }
+
+    const lastName = parts[parts.length - 1];
+
+    const initials = parts
+      .slice(0, -1)
+      .map((p) => `${p[0]}.`)
+      .join(" ");
+
+    return `${initials} ${lastName}`;
+  }
+
   return (
+
     <div className="max-w-md mx-auto bg-gray-100 min-h-screen">
 
+      {/* ========================= */}
       {/* HEADER */}
-      <div className="bg-green-600 text-white p-4 text-center">
+      {/* ========================= */}
+
+      <div className="bg-green-600 text-white p-4">
 
         <div className="flex justify-between items-center">
 
           {/* HOME */}
-          <div className="text-center">
+          <div className="text-center w-24">
+
             <img
               src={match.home_team.logo}
+              alt={match.home_team.name}
               className="w-12 h-12 mx-auto object-contain"
             />
 
-            <p>{match.home_team.name}</p>
+            <p className="text-sm mt-2 leading-tight">
+              {match.home_team.name}
+            </p>
+
           </div>
 
           {/* SCORE */}
-          <div className="text-2xl font-bold">
-            {match.home_score} - {match.away_score}
+          <div className="text-center">
 
-            <div className="text-sm">
+            <div className="text-4xl font-bold">
+              {match.home_score} - {match.away_score}
+            </div>
+
+            <div className="text-lg font-semibold">
               {match.status_label}
             </div>
+
           </div>
 
           {/* AWAY */}
-          <div className="text-center">
+          <div className="text-center w-24">
+
             <img
               src={match.away_team.logo}
+              alt={match.away_team.name}
               className="w-12 h-12 mx-auto object-contain"
             />
 
-            <p>{match.away_team.name}</p>
+            <p className="text-sm mt-2 leading-tight">
+              {match.away_team.name}
+            </p>
+
           </div>
 
         </div>
+
       </div>
 
+      {/* ========================= */}
       {/* EVENTS */}
-      <div className="p-4 space-y-8">
+      {/* ========================= */}
 
-        {/* ===================== */}
-        {/* ⚽ BUTS */}
-        {/* ===================== */}
+      <div className="p-3 space-y-8">
+
+        {/* ========================= */}
+        {/* BUTS */}
+        {/* ========================= */}
+
         <div>
 
-          <h3 className="text-center font-bold text-gray-700 mb-4">
+          <h2 className="text-center text-2xl font-bold text-gray-700 mb-5">
             BUTS
-          </h3>
+          </h2>
 
-          {[...match.goals]
-            .sort((a, b) => a.minute - b.minute)
-            .map((g) => {
+          <div className="space-y-3">
 
-              const isHome = isHomeEvent(g);
+            {[...match.goals]
+              .sort((a, b) => a.minute - b.minute)
+              .map((g) => {
 
-              return (
-                <div
-                  key={g.id}
-                  className="flex items-center mb-3"
-                >
+                const isHome = isHomeEvent(g);
 
-                  {/* HOME */}
-                  <div className="w-5/12">
+                return (
 
-                    {isHome && (
+                  <div
+                    key={g.id}
+                    className="
+                      bg-white
+                      rounded-2xl
+                      px-2
+                      py-3
+                      shadow-sm
+                    "
+                  >
 
-                      <Link
-                        to={`/competitions/${competitionId}/clubs/${g.club_id}/players/${g.player_id}`}
-                        className="flex items-center gap-0,3 hover:opacity-80"
+                    <div
+                      className="
+                        grid
+                        grid-cols-[1fr_55px_1fr]
+                        items-center
+                        gap-1
+                      "
+                    >
+
+                      {/* ========================= */}
+                      {/* HOME */}
+                      {/* ========================= */}
+
+                      <div>
+
+                        {isHome && (
+
+                          <Link
+                            to={`/competitions/${competitionId}/clubs/${g.club_id}/players/${g.player_id}`}
+                            className="
+                              flex
+                              items-center
+                              gap-2
+                              hover:opacity-80
+                            "
+                          >
+
+                            {/* PHOTO */}
+                            <img
+                              src={g.player_photo || "/default.png"}
+                              alt={g.player_name}
+                              className="
+                                w-10
+                                h-10
+                                rounded-full
+                                object-cover
+                                flex-shrink-0
+                              "
+                            />
+
+                            {/* TEXT */}
+                            <div className="min-w-0">
+
+                              {/* PLAYER */}
+                              <p
+                                className="
+                                  text-sm
+                                  font-semibold
+                                  flex
+                                  items-center
+                                  gap-[2px]
+                                  leading-tight
+                                "
+                              >
+
+                                <span className="break-words">
+                                  {abbreviateName(g.player_name)}
+                                </span>
+
+                                <span>⚽</span>
+
+                              </p>
+
+                              {/* ASSIST */}
+                              {g.assist_name && (
+
+                                <p
+                                  className="
+                                    text-xs
+                                    text-gray-500
+                                    flex
+                                    items-center
+                                    gap-[2px]
+                                    mt-1
+                                  "
+                                >
+
+                                  <span>
+                                    {abbreviateName(g.assist_name)}
+                                  </span>
+
+                                  <img
+                                    src={bootImg}
+                                    alt="boot"
+                                    className="w-4 h-4 object-contain"
+                                  />
+
+                                </p>
+
+                              )}
+
+                              {/* GOAL TYPE */}
+                              {g.goal_type !== "normal" && (
+
+                                <p
+                                  className="
+                                    text-xs
+                                    text-orange-600
+                                    font-semibold
+                                    mt-1
+                                  "
+                                >
+                                  {g.goal_type_label}
+                                </p>
+
+                              )}
+
+                            </div>
+
+                          </Link>
+
+                        )}
+
+                      </div>
+
+                      {/* ========================= */}
+                      {/* MINUTE */}
+                      {/* ========================= */}
+
+                      <div
+                        className="
+                          text-center
+                          text-green-600
+                          font-bold
+                          text-xl
+                        "
                       >
+                        {g.minute}'
+                      </div>
 
-                        {/* PHOTO */}
-                        <img
-                          src={g.player_photo || "/default.png"}
-                          className="w-8 h-8 rounded-full object-cover"
-                        />
+                      {/* ========================= */}
+                      {/* AWAY */}
+                      {/* ========================= */}
 
-                        {/* TEXT */}
-                        <div>
+                      <div>
 
-                          {/* PLAYER */}
-                          <p className="text-sm font-semibold whitespace-nowrap">
-                            {g.player_name} ⚽
-                          </p>
+                        {!isHome && (
 
-                          {/* ASSIST */}
-                          {g.assist_name && (
-                            <p className="text-xs text-gray-500 flex items-center gap-0,5 whitespace-nowrap">
+                          <Link
+                            to={`/competitions/${competitionId}/clubs/${g.club_id}/players/${g.player_id}`}
+                            className="
+                              flex
+                              items-center
+                              justify-end
+                              gap-2
+                              hover:opacity-80
+                            "
+                          >
 
-                              <span>{g.assist_name}</span>
+                            {/* TEXT */}
+                            <div className="text-right min-w-0">
 
-                              <img
-                                src={bootImg}
-                                alt="boot"
-                                className="w-4 h-4 object-contain"
-                              />
+                              {/* PLAYER */}
+                              <p
+                                className="
+                                  text-sm
+                                  font-semibold
+                                  flex
+                                  items-center
+                                  justify-end
+                                  gap-[2px]
+                                  leading-tight
+                                "
+                              >
 
-                            </p>
-                          )}
+                                <span className="break-words">
+                                  {abbreviateName(g.player_name)}
+                                </span>
 
-                          {/* GOAL TYPE */}
-                          {g.goal_type !== "normal" && (
-                            <p className="text-xs text-orange-600 font-semibold">
-                              {g.goal_type_label}
-                            </p>
-                          )}
+                                <span>⚽</span>
 
-                        </div>
+                              </p>
 
-                      </Link>
+                              {/* ASSIST */}
+                              {g.assist_name && (
 
-                    )}
+                                <p
+                                  className="
+                                    text-xs
+                                    text-gray-500
+                                    flex
+                                    items-center
+                                    justify-end
+                                    gap-[2px]
+                                    mt-1
+                                  "
+                                >
+
+                                  <span>
+                                    {abbreviateName(g.assist_name)}
+                                  </span>
+
+                                  <img
+                                    src={bootImg}
+                                    alt="boot"
+                                    className="w-4 h-4 object-contain"
+                                  />
+
+                                </p>
+
+                              )}
+
+                              {/* GOAL TYPE */}
+                              {g.goal_type !== "normal" && (
+
+                                <p
+                                  className="
+                                    text-xs
+                                    text-orange-600
+                                    font-semibold
+                                    mt-1
+                                  "
+                                >
+                                  {g.goal_type_label}
+                                </p>
+
+                              )}
+
+                            </div>
+
+                            {/* PHOTO */}
+                            <img
+                              src={g.player_photo || "/default.png"}
+                              alt={g.player_name}
+                              className="
+                                w-10
+                                h-10
+                                rounded-full
+                                object-cover
+                                flex-shrink-0
+                              "
+                            />
+
+                          </Link>
+
+                        )}
+
+                      </div>
+
+                    </div>
 
                   </div>
 
-                  {/* MINUTE */}
-                  <div className="w-2/12 text-center text-green-600 font-bold">
-                    {g.minute}'
-                  </div>
+                );
+              })}
 
-                  {/* AWAY */}
-                  <div className="w-5/12">
+          </div>
 
-                    {!isHome && (
-
-                      <Link
-                        to={`/competitions/${competitionId}/clubs/${g.club_id}/players/${g.player_id}`}
-                        className="flex items-center justify-end gap-0,5 hover:opacity-80"
-                      >
-
-                        {/* PHOTO */}
-                        <img
-                          src={g.player_photo || "/default.png"}
-                          className="w-8 h-8 rounded-full object-cover"
-                        />
-
-                        {/* TEXT */}
-                        <div className="text-right">
-
-                          {/* PLAYER */}
-                          <p className="text-sm font-semibold whitespace-nowrap">
-                            {g.player_name} ⚽
-                          </p>
-
-                          {/* ASSIST */}
-                          {g.assist_name && (
-                            <p className="text-xs text-gray-500 flex items-center justify-end gap-1 whitespace-nowrap">
-
-                              <span>{g.assist_name}</span>
-
-                              <img
-                                src={bootImg}
-                                alt="boot"
-                                className="w-4 h-4 object-contain"
-                              />
-
-                            </p>
-                          )}
-
-                          {/* GOAL TYPE */}
-                          {g.goal_type !== "normal" && (
-                            <p className="text-xs text-orange-600 font-semibold">
-                              {g.goal_type_label}
-                            </p>
-                          )}
-
-                        </div>
-
-                      </Link>
-
-                    )}
-
-                  </div>
-
-                </div>
-              );
-            })}
         </div>
 
-        {/* ===================== */}
-        {/* 🟨 CARTONS */}
-        {/* ===================== */}
+        {/* ========================= */}
+        {/* CARTONS */}
+        {/* ========================= */}
+
         <div>
 
-          <h3 className="text-center font-bold text-gray-700 mb-4">
+          <h2 className="text-center text-2xl font-bold text-gray-700 mb-5">
             CARTONS
-          </h3>
+          </h2>
 
-          {[...match.cards]
-            .sort((a, b) => a.minute - b.minute)
-            .map((c) => {
+          <div className="space-y-3">
 
-              const isHome = isHomeEvent(c);
+            {[...match.cards]
+              .sort((a, b) => a.minute - b.minute)
+              .map((c) => {
 
-              const cardIcon =
-                c.color === "red" ? "🟥" : "🟨";
+                const isHome = isHomeEvent(c);
 
-              return (
-                <div
-                  key={c.id}
-                  className="flex items-center mb-4"
-                >
+                const cardIcon =
+                  c.color === "red" ? "🟥" : "🟨";
 
-                  {/* HOME */}
-                  <div className="w-5/12">
+                return (
 
-                    {isHome && (
+                  <div
+                    key={c.id}
+                    className="
+                      bg-white
+                      rounded-2xl
+                      px-2
+                      py-3
+                      shadow-sm
+                    "
+                  >
 
-                      <Link
-                        to={`/competitions/${competitionId}/clubs/${c.club_id}/players/${c.player_id}`}
-                        className="flex items-center gap-0,5 hover:opacity-80"
-                      >
+                    <div
+                      className="
+                        grid
+                        grid-cols-[1fr_55px_1fr]
+                        items-center
+                        gap-1
+                      "
+                    >
 
-                        {/* PHOTO */}
-                        <img
-                          src={c.player_photo || "/default.png"}
-                          className="w-9 h-9 rounded-full object-cover"
-                        />
+                      {/* HOME */}
+                      <div>
 
-                        {/* TEXT */}
-                        <div>
+                        {isHome && (
 
-                          {/* PLAYER */}
-                          <p className="text-sm font-semibold flex items-center gap-0,5 whitespace-nowrap">
-                            {c.player_name}
+                          <Link
+                            to={`/competitions/${competitionId}/clubs/${c.club_id}/players/${c.player_id}`}
+                            className="
+                              flex
+                              items-center
+                              gap-2
+                              hover:opacity-80
+                            "
+                          >
 
-                            <span>{cardIcon}</span>
-                          </p>
-
-                          {/* REASON */}
-                          <p className="text-xs text-gray-500 flex items-center gap-1 whitespace-nowrap">
-
-                            <span>{c.reason_label}</span>
-
+                            {/* PHOTO */}
                             <img
-                              src={whistleImg}
-                              alt="whistle"
-                              className="w-5 h-5 object-contain"
+                              src={c.player_photo || "/default.png"}
+                              alt={c.player_name}
+                              className="
+                                w-10
+                                h-10
+                                rounded-full
+                                object-cover
+                                flex-shrink-0
+                              "
                             />
 
-                          </p>
+                            {/* TEXT */}
+                            <div className="min-w-0">
 
-                        </div>
+                              {/* PLAYER */}
+                              <p
+                                className="
+                                  text-sm
+                                  font-semibold
+                                  flex
+                                  items-center
+                                  gap-[2px]
+                                  leading-tight
+                                "
+                              >
 
-                      </Link>
+                                <span className="break-words">
+                                  {abbreviateName(c.player_name)}
+                                </span>
 
-                    )}
+                                <span>{cardIcon}</span>
 
-                  </div>
+                              </p>
 
-                  {/* MINUTE */}
-                  <div className="w-2/12 text-center text-green-600 font-bold">
-                    {c.minute}'
-                  </div>
+                              {/* REASON */}
+                              <p
+                                className="
+                                  text-xs
+                                  text-gray-500
+                                  flex
+                                  items-center
+                                  gap-[2px]
+                                  mt-1
+                                "
+                              >
 
-                  {/* AWAY */}
-                  <div className="w-5/12">
+                                <span>
+                                  {c.reason_label}
+                                </span>
 
-                    {!isHome && (
+                                <img
+                                  src={whistleImg}
+                                  alt="whistle"
+                                  className="w-4 h-4 object-contain"
+                                />
 
-                      <Link
-                        to={`/competitions/${competitionId}/clubs/${c.club_id}/players/${c.player_id}`}
-                        className="flex items-center justify-end gap-0,5 hover:opacity-80"
+                              </p>
+
+                            </div>
+
+                          </Link>
+
+                        )}
+
+                      </div>
+
+                      {/* MINUTE */}
+                      <div
+                        className="
+                          text-center
+                          text-green-600
+                          font-bold
+                          text-xl
+                        "
                       >
+                        {c.minute}'
+                      </div>
 
-                        {/* PHOTO */}
-                        <img
-                          src={c.player_photo || "/default.png"}
-                          className="w-9 h-9 rounded-full object-cover"
-                        />
+                      {/* AWAY */}
+                      <div>
 
-                        {/* TEXT */}
-                        <div className="text-right">
+                        {!isHome && (
 
-                          {/* PLAYER */}
-                          <p className="text-sm font-semibold flex items-center justify-end gap-1 whitespace-nowrap">
+                          <Link
+                            to={`/competitions/${competitionId}/clubs/${c.club_id}/players/${c.player_id}`}
+                            className="
+                              flex
+                              items-center
+                              justify-end
+                              gap-2
+                              hover:opacity-80
+                            "
+                          >
 
-                            {c.player_name}
+                            {/* TEXT */}
+                            <div className="text-right min-w-0">
 
-                            <span>{cardIcon}</span>
+                              {/* PLAYER */}
+                              <p
+                                className="
+                                  text-sm
+                                  font-semibold
+                                  flex
+                                  items-center
+                                  justify-end
+                                  gap-[2px]
+                                  leading-tight
+                                "
+                              >
 
-                          </p>
+                                <span className="break-words">
+                                  {abbreviateName(c.player_name)}
+                                </span>
 
-                          {/* REASON */}
-                          <p className="text-xs text-gray-500 flex items-center justify-end gap-1 whitespace-nowrap">
+                                <span>{cardIcon}</span>
 
-                            <span>{c.reason_label}</span>
+                              </p>
 
+                              {/* REASON */}
+                              <p
+                                className="
+                                  text-xs
+                                  text-gray-500
+                                  flex
+                                  items-center
+                                  justify-end
+                                  gap-[2px]
+                                  mt-1
+                                "
+                              >
+
+                                <span>
+                                  {c.reason_label}
+                                </span>
+
+                                <img
+                                  src={whistleImg}
+                                  alt="whistle"
+                                  className="w-4 h-4 object-contain"
+                                />
+
+                              </p>
+
+                            </div>
+
+                            {/* PHOTO */}
                             <img
-                              src={whistleImg}
-                              alt="whistle"
-                              className="w-5 h-5 object-contain"
+                              src={c.player_photo || "/default.png"}
+                              alt={c.player_name}
+                              className="
+                                w-10
+                                h-10
+                                rounded-full
+                                object-cover
+                                flex-shrink-0
+                              "
                             />
 
-                          </p>
+                          </Link>
 
-                        </div>
+                        )}
 
-                      </Link>
+                      </div>
 
-                    )}
+                    </div>
 
                   </div>
 
-                </div>
-              );
-            })}
+                );
+              })}
+
+          </div>
+
         </div>
 
       </div>
+
     </div>
+
   );
 }
