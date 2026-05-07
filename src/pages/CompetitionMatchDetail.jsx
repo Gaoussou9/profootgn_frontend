@@ -542,8 +542,8 @@ export default function CompetitionMatchDetail() {
                         className="
                           text-center
                           text-green-600
-                          font-bold
-                          text-xl
+                          font-semibold
+                          text-lg
                         "
                       >
                         {c.minute}'
