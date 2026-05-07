@@ -285,7 +285,7 @@ export default function CompetitionMatchDetail() {
                           text-center
                           text-green-600
                           font-semibold
-                          text-lg
+                          text-[15px]
                         "
                       >
                         {g.minute}'
@@ -543,7 +543,7 @@ export default function CompetitionMatchDetail() {
                           text-center
                           text-green-600
                           font-semibold
-                          text-lg
+                          text-[15px]
                         "
                       >
                         {c.minute}'
