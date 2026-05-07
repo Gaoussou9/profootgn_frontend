@@ -284,7 +284,7 @@ export default function CompetitionMatchDetail() {
                         className="
                           text-center
                           text-green-600
-                          font-bold
+                          font-semibold
                           text-xl
                         "
                       >
