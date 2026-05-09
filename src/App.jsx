@@ -23,6 +23,7 @@ import CompetitionMatchDetail from "./pages/CompetitionMatchDetail";
 import CompetitionPlayerDetail from "./pages/CompetitionPlayerDetail";
 
 import { LiveProvider } from "./context/LiveContext";
+import CompetitionMatchLineups from "./pages/CompetitionMatchLineups";
 
 function Layout() {
   const location = useLocation();
@@ -71,6 +72,10 @@ export default function App() {
             <Route path="/competitions/:competitionId/clubs" element={<CompetitionClubs />} />
             <Route path="/competitions/:competitionId/clubs/:clubId/players/:playerId" element={<CompetitionPlayerDetail />} />
             <Route path="/competitions/:competitionId" element={<CompetitionPage />} />
+            <Route
+  path="/competitions/:competitionId/matches/:matchId/lineups"
+  element={<CompetitionMatchLineups />}
+/>
 
             {/* 404 */}
             <Route path="*" element={<Navigate to="/journees" replace />} />

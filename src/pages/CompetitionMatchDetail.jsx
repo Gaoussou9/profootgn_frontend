@@ -1,8 +1,14 @@
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import {
+  useParams,
+  Link,
+  useNavigate
+} from "react-router-dom";
 
 import whistleImg from "../assets/whistle.webp";
 import bootImg from "../assets/crampon.png";
+import { useSwipeable } from "react-swipeable";
+import CompetitionMatchLineups from "./CompetitionMatchLineups";
 
 const API_BASE =
   import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
@@ -10,8 +16,31 @@ const API_BASE =
 export default function CompetitionMatchDetail() {
 
   const { competitionId, matchId } = useParams();
+  const navigate = useNavigate();
 
   const [match, setMatch] = useState(null);
+  const [tab, setTab] = useState("events");
+
+  const handlers = useSwipeable({
+
+  onSwipedLeft: () => {
+
+    if (tab === "events") {
+      setTab("lineups");
+    }
+
+  },
+
+  onSwipedRight: () => {
+
+    if (tab === "lineups") {
+      setTab("events");
+    }
+
+  },
+
+  trackMouse: true,
+});
 
   useEffect(() => {
 
@@ -67,7 +96,10 @@ export default function CompetitionMatchDetail() {
 
   return (
 
-    <div className="max-w-md mx-auto bg-gray-100 min-h-screen">
+    <div
+  {...handlers}
+  className="max-w-md mx-auto bg-gray-100 min-h-screen pb-24"
+>
 
       {/* ========================= */}
       {/* HEADER */}
@@ -124,12 +156,79 @@ export default function CompetitionMatchDetail() {
 
       </div>
 
-      {/* ========================= */}
-      {/* EVENTS */}
-      {/* ========================= */}
+{/* ========================= */}
+{/* TABS */}
+{/* ========================= */}
 
-      <div className="p-3 space-y-8">
+<div
+  className="
+    bg-white
+    border-b
+    sticky
+    top-0
+    z-20
+  "
+>
 
+  <div
+    className="
+      flex
+      items-center
+      justify-center
+    "
+  >
+
+    {/* EVENTS */}
+    <button
+      onClick={() => setTab("events")}
+      className={`
+        flex-1
+        py-3
+        text-sm
+        font-bold
+        transition
+        border-b-2
+        ${
+          tab === "events"
+            ? "border-green-600 text-green-600"
+            : "border-transparent text-gray-500"
+        }
+      `}
+    >
+      Evènements
+    </button>
+
+    {/* COMPOSITION */}
+    <button
+      onClick={() => setTab("lineups")}
+      className={`
+        flex-1
+        py-3
+        text-sm
+        font-bold
+        transition
+        border-b-2
+        ${
+          tab === "lineups"
+            ? "border-green-600 text-green-600"
+            : "border-transparent text-gray-500"
+        }
+      `}
+    >
+      Composition
+    </button>
+
+  </div>
+
+</div>
+
+{/* ========================= */}
+{/* EVENTS */}
+{/* ========================= */}
+
+{tab === "events" && (
+
+<div className="p-3 space-y-8">
         {/* ========================= */}
         {/* BUTS */}
         {/* ========================= */}
@@ -641,14 +740,345 @@ export default function CompetitionMatchDetail() {
 
                 );
               })}
+              
 
           </div>
 
         </div>
+{/* CHANGEMENTS */}
 
-      </div>
+{match.substitutions?.length > 0 && (
+  <>
+    <h2
+      style={{
+        textAlign: "center",
+        marginTop: 35,
+        marginBottom: 18,
+        fontSize: 20,
+        fontWeight: 800,
+        color: "#374151",
+        letterSpacing: 1,
+      }}
+    >
+      CHANGEMENTS
+    </h2>
+
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 10,
+      }}
+    >
+      {match.substitutions.map((sub) => {
+
+        const isHome =
+          sub.team === match.home_team?.id;
+
+        return (
+
+          <div
+  key={sub.id}
+  style={{
+    background: "#fff",
+    borderRadius: 14,
+    padding: "12px 14px",
+    display: "grid",
+    gridTemplateColumns: "1fr 60px 1fr",
+    alignItems: "center",
+    boxShadow: "0 2px 8px rgba(0,0,0,.05)",
+  }}
+>
+
+  {/* DOMICILE */}
+  <div>
+
+    {isHome && (
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 8,
+        }}
+      >
+
+        {/* SORTANT */}
+<div
+  onClick={() =>
+    navigate(
+      `/competitions/${competitionId}/clubs/${sub.player_out.club_id}/players/${sub.player_out.id}`
+    )
+  }
+  style={{
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    color: "#111827",
+    fontWeight: 600,
+    fontSize: 14,
+    cursor: "pointer",
+    width: "fit-content",
+  }}
+>
+  {sub.player_out.photo && (
+    <img
+      src={sub.player_out.photo}
+      alt=""
+      style={{
+        width: 22,
+        height: 22,
+        borderRadius: "50%",
+        objectFit: "cover",
+        flexShrink: 0,
+      }}
+    />
+  )}
+
+  <span>
+    {sub.player_out.name}
+  </span>
+
+  <div
+    style={{
+      width: 18,
+      height: 18,
+      borderRadius: 4,
+      backgroundColor: "#dc2626",
+      color: "#ffffff",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontSize: 11,
+      fontWeight: 700,
+      flexShrink: 0,
+    }}
+  >
+    ↓
+  </div>
+</div>
+
+{/* ENTRANT */}
+<div
+  onClick={() =>
+    navigate(
+      `/competitions/${competitionId}/clubs/${sub.player_in.club_id}/players/${sub.player_in.id}`
+    )
+  }
+  style={{
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    color: "#111827",
+    fontWeight: 600,
+    fontSize: 14,
+    cursor: "pointer",
+    width: "fit-content",
+  }}
+>
+  {sub.player_in.photo && (
+    <img
+      src={sub.player_in.photo}
+      alt=""
+      style={{
+        width: 22,
+        height: 22,
+        borderRadius: "50%",
+        objectFit: "cover",
+        flexShrink: 0,
+      }}
+    />
+  )}
+
+  <span>
+    {sub.player_in.name}
+  </span>
+
+  <div
+    style={{
+      width: 18,
+      height: 18,
+      borderRadius: 4,
+      backgroundColor: "#16a34a",
+      color: "#ffffff",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontSize: 11,
+      fontWeight: 700,
+      flexShrink: 0,
+    }}
+  >
+    ↑
+  </div>
+</div>
+
+</div>
+)}
+
+</div>
+
+  {/* MINUTE CENTRÉE */}
+  <div
+    style={{
+      textAlign: "center",
+      fontSize: 14,
+      fontWeight: 600,
+      color: "#111827",
+    }}
+  >
+    {sub.minute}'
+  </div>
+
+  {/* EXTÉRIEUR */}
+  <div>
+
+  {!isHome && (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 8,
+        alignItems: "flex-end",
+      }}
+    >
+
+      {/* SORTANT */}
+<div
+  onClick={() =>
+    navigate(
+      `/competitions/${competitionId}/clubs/${sub.player_out.club_id}/players/${sub.player_out.id}`
+    )
+  }
+  style={{
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    color: "#111827",
+    fontWeight: 600,
+    fontSize: 14,
+    cursor: "pointer",
+    width: "fit-content",
+  }}
+>
+  <div
+    style={{
+      width: 18,
+      height: 18,
+      borderRadius: 4,
+      backgroundColor: "#dc2626",
+      color: "#ffffff",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontSize: 11,
+      fontWeight: 700,
+      flexShrink: 0,
+    }}
+  >
+    ↓
+  </div>
+
+  {sub.player_out.photo && (
+    <img
+      src={sub.player_out.photo}
+      alt=""
+      style={{
+        width: 22,
+        height: 22,
+        borderRadius: "50%",
+        objectFit: "cover",
+        flexShrink: 0,
+      }}
+    />
+  )}
+
+  <span>
+    {sub.player_out.name}
+  </span>
+</div>
+
+{/* ENTRANT */}
+<div
+  onClick={() =>
+    navigate(
+      `/competitions/${competitionId}/clubs/${sub.player_in.club_id}/players/${sub.player_in.id}`
+    )
+  }
+  style={{
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    color: "#111827",
+    fontWeight: 600,
+    fontSize: 14,
+    cursor: "pointer",
+    width: "fit-content",
+  }}
+>
+  <div
+    style={{
+      width: 18,
+      height: 18,
+      borderRadius: 4,
+      backgroundColor: "#16a34a",
+      color: "#ffffff",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontSize: 11,
+      fontWeight: 700,
+      flexShrink: 0,
+    }}
+  >
+    ↑
+  </div>
+
+  {sub.player_in.photo && (
+    <img
+      src={sub.player_in.photo}
+      alt=""
+      style={{
+        width: 22,
+        height: 22,
+        borderRadius: "50%",
+        objectFit: "cover",
+        flexShrink: 0,
+      }}
+    />
+  )}
+
+  <span>
+    {sub.player_in.name}
+  </span>
+</div>
 
     </div>
+  )}
+
+</div>
+
+</div>
+        );
+
+      })}
+    </div>
+  </>
+)}
+</div>
+
+)}
+{/* ========================= */}
+{/* COMPOSITION */}
+{/* ========================= */}
+
+{/* ========================= */}
+{/* COMPOSITION */}
+{/* ========================= */}
+
+{tab === "lineups" && (
+  <CompetitionMatchLineups />
+)}
+</div>
 
   );
 }

@@ -105,34 +105,32 @@ export default function CompetitionScorers() {
             </div>
 
             {/* STATS */}
-            <div className="flex items-center gap-4 text-sm">
+<div className="flex items-center gap-4 text-sm">
 
-              {/* GOALS */}
-              <span className="font-bold text-green-600 w-8 text-center">
-                {p.goals}
-              </span>
+  {/* GOALS */}
+  <span className="font-bold text-green-600 w-8 text-center">
+    {p.goals}
+  </span>
 
-              {/* MATCHES */}
-              <span className="text-gray-600 w-8 text-center">
-                {p.matches ?? "-"}
-              </span>
+  {/* MATCHES */}
+  <span className="text-gray-600 w-8 text-center">
+    {p.matches_played ?? "-"}
+  </span>
 
-              {/* RATIO */}
-              <span
-                className={`text-xs w-10 text-center ${
-                  p.matches > 0 && p.goals / p.matches > 0.7
-                    ? "text-green-500"
-                    : p.matches > 0 && p.goals / p.matches > 0.3
-                    ? "text-orange-400"
-                    : "text-gray-400"
-                }`}
-              >
-                {p.matches > 0
-                  ? (p.goals / p.matches).toFixed(2)
-                  : "-"}
-              </span>
+  {/* RATIO */}
+  <span
+    className={`text-xs w-10 text-center ${
+      p.ratio > 0.7
+        ? "text-green-500"
+        : p.ratio > 0.3
+        ? "text-orange-400"
+        : "text-gray-400"
+    }`}
+  >
+    {p.ratio ?? "-"}
+  </span>
 
-            </div>
+</div>
           </div>
         ))
       )}
