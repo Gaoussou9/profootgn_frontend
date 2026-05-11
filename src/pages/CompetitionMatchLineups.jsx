@@ -399,8 +399,9 @@ export default function CompetitionMatchLineups() {
           }}
         >
 
-          <FootballPitch
+  <FootballPitch
   players={data.home_starters}
+  formation={data.home_formation}
   competitionId={competitionId}
 />
 
@@ -464,8 +465,9 @@ export default function CompetitionMatchLineups() {
           }}
         >
 
-          <FootballPitch
+  <FootballPitch
   players={data.away_starters}
+  formation={data.away_formation}
   competitionId={competitionId}
 />
 
